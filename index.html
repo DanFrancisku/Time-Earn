@@ -272,6 +272,26 @@ details summary { cursor: pointer; font-weight: 700; min-height: 40px; display: 
 code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
 @media (min-width: 700px) { :root { --hourw: 40px; --datew: 76px; } }
 
+/* pay periods */
+.pay-meta { display: grid; gap: 2px; font-size: 14px; }
+.pay-meta span:last-child { color: var(--muted); font-size: 13px; }
+.pjobs { display: grid; gap: 8px; }
+.pjob { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.pjob-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+.pjob-top .num { font-weight: 700; white-space: nowrap; }
+.pjob-money { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pjob-money span { display: inline-flex; align-items: center; gap: 6px; }
+.pjob-status { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pstat { display: inline-block; font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+.pstat.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.pstat.warn { background: var(--warn-soft); color: var(--warn); }
+.btn.small-btn { min-height: 38px; padding: 6px 12px; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.ptable td, .ptable th { font-size: 13.5px; padding: 7px 5px; }
+.ptable tr.now td { background: var(--accent-soft); }
+.mper { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
+.seg button { overflow-wrap: anywhere; }
+
 </style>
 </head>
 <body>
@@ -629,7 +649,12 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     if (errs.length) return errs;
     const catIds = new Set(d.categories.map((c) => c.id));
     d.categories.forEach((c, i) => { if (!c.id || !c.name || !/^#[0-9a-fA-F]{6}$/.test(c.color || '')) errs.push('Category ' + (i + 1) + ' is incomplete.'); });
-    d.jobs.forEach((j, i) => { if (!j.id || !j.name || typeof j.rate !== 'number') errs.push('Job ' + (i + 1) + ' is incomplete.'); });
+    d.jobs.forEach((j, i) => {
+      if (!j.id || !j.name || typeof j.rate !== 'number') errs.push('Job ' + (i + 1) + ' is incomplete.');
+      if (j.payCycle != null) validateCycle(j.payCycle).forEach((e) => errs.push('Job ' + (i + 1) + ' pay cycle: ' + e));
+    });
+    // Older backups have no payments section; that's fine.
+    if (d.payments != null && (typeof d.payments !== 'object' || (d.payments.records != null && typeof d.payments.records !== 'object'))) errs.push('The payment records in this backup are damaged.');
     const ids = new Set();
     d.activities.forEach((r, i) => {
       if (!r.id || ids.has(r.id)) errs.push('Activity ' + (i + 1) + ' has a missing or repeated id.');
@@ -646,7 +671,122 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     return errs.slice(0, 12);
   }
 
-  const api = { DAY, pad, isValidDate, dayNum, fromDayNum, addDays, daysInMonth, isLeapYear, weekday, monthKey, monthDates, dateRange, localToday,
+  // ---------- pay cycles ----------
+  // cycle: { type:'calendar'|'monthly'|'manual', startDay:1-31, paydayDay:1-31,
+  //          paydayMonth:'closing'|'following'|'none', periods:[{id,start,end,payday}] }
+  const ymd = (y, m, d) => y + '-' + pad(m) + '-' + pad(d);
+  function clampDate(y, m, d) { return ymd(y, m, Math.min(d, daysInMonth(y, m))); }
+  function addMonths(y, m, k) { const t = y * 12 + (m - 1) + k; return [Math.floor(t / 12), (t % 12) + 1]; }
+  function normCycle(c) {
+    c = c && typeof c === 'object' ? c : {};
+    const type = ['calendar', 'monthly', 'manual'].includes(c.type) ? c.type : 'calendar';
+    const int = (v, d) => { v = parseInt(v, 10); return v >= 1 && v <= 31 ? v : d; };
+    return {
+      type,
+      startDay: type === 'calendar' ? 1 : int(c.startDay, 1),
+      paydayDay: int(c.paydayDay, 28),
+      paydayMonth: ['closing', 'following', 'none'].includes(c.paydayMonth) ? c.paydayMonth : 'none',
+      periods: Array.isArray(c.periods) ? c.periods.filter((p) => p && isValidDate(p.start) && isValidDate(p.end)).map((p) => ({ id: p.id || (p.start + '_' + p.end), start: p.start, end: p.end, payday: isValidDate(p.payday) ? p.payday : null })).sort((a, b) => a.start.localeCompare(b.start)) : []
+    };
+  }
+  /** Recurring period that starts in month (y, m). End = day before the next period's start, so periods never gap or overlap. */
+  function monthlyPeriod(c, y, m) {
+    const start = clampDate(y, m, c.startDay);
+    const [ny, nm] = addMonths(y, m, 1);
+    const end = addDays(clampDate(ny, nm, c.startDay), -1);
+    let payday = null;
+    if (c.paydayMonth !== 'none') {
+      let py = +end.slice(0, 4), pm = +end.slice(5, 7); // closing month = month the period ends in
+      if (c.paydayMonth === 'following') [py, pm] = addMonths(py, pm, 1);
+      payday = clampDate(py, pm, c.paydayDay);
+    }
+    return { start, end, payday, key: start, y, m };
+  }
+  /** Period containing date, or null (manual cycles can have uncovered dates). */
+  function periodFor(cycle, date) {
+    const c = normCycle(cycle);
+    if (c.type === 'manual') { const p = c.periods.find((q) => q.start <= date && date <= q.end); return p ? Object.assign({ key: p.start }, p) : null; }
+    const y = +date.slice(0, 4), m = +date.slice(5, 7);
+    const here = monthlyPeriod(c, y, m);
+    if (date >= here.start) return here;
+    const [py, pm] = addMonths(y, m, -1);
+    return monthlyPeriod(c, py, pm);
+  }
+  /** Step k periods from a period (k = ±1). Returns null at the ends of a manual list. */
+  function stepPeriod(cycle, period, k) {
+    const c = normCycle(cycle);
+    if (c.type === 'manual') {
+      const i = c.periods.findIndex((p) => p.start === period.start);
+      const p = c.periods[i + k];
+      return p ? Object.assign({ key: p.start }, p) : null;
+    }
+    const [y, m] = addMonths(period.y, period.m, k);
+    return monthlyPeriod(c, y, m);
+  }
+  /** Closest manual period to a date (for when no period covers it). */
+  function nearestManual(cycle, date) {
+    const c = normCycle(cycle);
+    if (!c.periods.length) return null;
+    let best = c.periods[0];
+    for (const p of c.periods) if (p.start <= date) best = p;
+    return Object.assign({ key: best.start }, best);
+  }
+  function cycleSignature(cycle, jobId) {
+    const c = normCycle(cycle);
+    if (c.type === 'manual') return 'manual|' + jobId;
+    return c.type + '|' + c.startDay + '|' + c.paydayMonth + '|' + (c.paydayMonth === 'none' ? '' : c.paydayDay);
+  }
+  function validateCycle(cycle) {
+    const errs = [];
+    if (!cycle || typeof cycle !== 'object') return errs;
+    if (!['calendar', 'monthly', 'manual'].includes(cycle.type)) errs.push('Choose a pay-cycle type.');
+    if (cycle.type === 'monthly') {
+      const s = +cycle.startDay; if (!(Number.isInteger(s) && s >= 1 && s <= 31)) errs.push('Start day must be between 1 and 31.');
+    }
+    if (cycle.type !== 'manual' && cycle.paydayMonth !== 'none') {
+      const p = +cycle.paydayDay; if (!(Number.isInteger(p) && p >= 1 && p <= 31)) errs.push('Payday must be a day between 1 and 31.');
+    }
+    if (cycle.type === 'manual') {
+      const ps = (cycle.periods || []).slice();
+      if (!ps.length) errs.push('Add at least one pay period.');
+      ps.forEach((p, i) => {
+        if (!isValidDate(p.start) || !isValidDate(p.end)) errs.push('Pay period ' + (i + 1) + ' needs a start and end date.');
+        else if (p.end < p.start) errs.push('Pay period ' + (i + 1) + ' ends before it starts.');
+        if (p.payday && !isValidDate(p.payday)) errs.push('Pay period ' + (i + 1) + ' has an invalid payday.');
+      });
+      const ok = ps.filter((p) => isValidDate(p.start) && isValidDate(p.end) && p.end >= p.start).sort((a, b) => a.start.localeCompare(b.start));
+      for (let i = 1; i < ok.length; i++) if (ok[i].start <= ok[i - 1].end) errs.push('Pay periods ' + ok[i - 1].start + '–' + ok[i - 1].end + ' and ' + ok[i].start + '–' + ok[i].end + ' overlap.');
+    }
+    return errs;
+  }
+  /**
+   * Paid work for the given jobs between start and end (inclusive dates).
+   * Each record is split at midnight, and each part counts on its own date, so an overnight shift
+   * crossing a period boundary is split between the two periods and never counted twice.
+   * matchJob(jobId) decides which records belong.
+   */
+  function periodStats(records, start, end, mode, matchJob) {
+    const out = { paidMin: 0, earnings: 0, byJob: {}, days: {} };
+    const from = addDays(start, -1);
+    for (const r of records) {
+      if (r.mode !== mode || !r.paid || r.date < from || r.date > end || !matchJob(r.jobId || null)) continue;
+      for (const o of [0, 1]) {
+        const dt = addDays(r.date, o);
+        if (dt < start || dt > end) continue;
+        const p = portion(r, o);
+        if (p.paidMin <= 0 && p.earnings === 0) continue;
+        out.paidMin += p.paidMin; out.earnings += p.earnings;
+        const k = r.jobId || '_none';
+        const j = out.byJob[k] || (out.byJob[k] = { paidMin: 0, earnings: 0 });
+        j.paidMin += p.paidMin; j.earnings += p.earnings;
+        const d = out.days[dt] || (out.days[dt] = { paidMin: 0, earnings: 0 });
+        d.paidMin += p.paidMin; d.earnings += p.earnings;
+      }
+    }
+    return out;
+  }
+
+  const api = { ymd, clampDate, addMonths, normCycle, monthlyPeriod, periodFor, stepPeriod, nearestManual, cycleSignature, validateCycle, periodStats, DAY, pad, isValidDate, dayNum, fromDayNum, addDays, daysInMonth, isLeapYear, weekday, monthKey, monthDates, dateRange, localToday,
     parseTime, fmtTime, fmtDur, hours, span, subInterval, validateRecord, paidPieces, recordTotals, portion, fragmentsForDate,
     absSpan, findOverlaps, dayStats, monthStats, uid, weekdayDates, cloneRecord, planBatch, resolveBatch, copyDayRecords, repeatWeek,
     elapsedMinutes, dstDifference, round2, validateBackup };
@@ -659,7 +799,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
 (function () {
   'use strict';
   const T = window.TE;
-  const SCHEMA = 1;
+  const SCHEMA = 2; // 2: pay cycles on jobs + payment-received records
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -675,14 +815,15 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     { id: 'cat_leisure', name: 'Leisure', short: 'Ls', color: '#1fa8a0', role: 'leisure' },
     { id: 'cat_personal', name: 'Personal time', short: 'Pe', color: '#a87556', role: 'personal' }
   ];
-  const DEFAULT_SETTINGS = { id: 'settings', currency: 'GBP', theme: 'system', schemaVersion: SCHEMA };
+  const DEFAULT_SETTINGS = { id: 'settings', currency: 'GBP', theme: 'system', incomeBasis: 'month', schemaVersion: SCHEMA };
+  const emptyPayments = () => ({ id: 'payments', records: {} });
 
   // ---------------- state ----------------
   const now = new Date();
   const S = {
-    real: { settings: { ...DEFAULT_SETTINGS }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [] },
+    real: { settings: { ...DEFAULT_SETTINGS }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments() },
     demo: null, demoOn: false,
-    ui: { tab: 'dashboard', y: now.getFullYear(), m: now.getMonth() + 1, mode: 'planned', dashRange: 'today', sumY: now.getFullYear(), sumM: now.getMonth() + 1, tip: null },
+    ui: { tab: 'dashboard', y: now.getFullYear(), m: now.getMonth() + 1, mode: 'planned', dashRange: 'today', sumY: now.getFullYear(), sumM: now.getMonth() + 1, tip: null, payGroup: null, payAnchor: null },
     storage: 'loading'
   };
   const D = () => (S.demoOn ? S.demo : S.real);
@@ -750,7 +891,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (this.kind === 'idb') {
         const out = {};
         await Promise.all(STORES.map((s) => new Promise((res, rej) => { const rq = this.db.transaction(s).objectStore(s).getAll(); rq.onsuccess = () => { out[s] = rq.result; res(); }; rq.onerror = () => rej(rq.error); })));
-        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings') };
+        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings'), payments: (out.meta || []).find((x) => x.id === 'payments') };
       }
       if (this.kind === 'ls') { try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; } }
       return {};
@@ -768,10 +909,11 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
             (ch[s].put || []).forEach((r) => tx.objectStore(s).put(r));
           }
           if (ch.settings) tx.objectStore('meta').put(ch.settings);
+          if (ch.payments) tx.objectStore('meta').put(ch.payments);
         });
       } else if (this.kind === 'ls') {
         const r = S.real;
-        localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings }));
+        localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings, payments: r.payments }));
       }
     }
   };
@@ -787,7 +929,8 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       d[s] = d[s].filter((r) => !del.has(r.id) && !putIds.has(r.id)).concat(put);
     }
     if (ch.settings) { S.real.settings = ch.settings; fmtCache = {}; }
-    if (!S.demoOn || (ch.settings && !ch.activities && !ch.jobs && !ch.categories)) {
+    if (ch.payments) d.payments = ch.payments;
+    if (!S.demoOn || (ch.settings && !ch.activities && !ch.jobs && !ch.categories && !ch.payments)) {
       const persistCh = S.demoOn ? { settings: ch.settings } : ch;
       writeChain = writeChain.then(() => Store.commit(persistCh)).catch((e) => { console.error(e); toast('Could not save to this device. Export a backup soon.'); });
     }
@@ -896,7 +1039,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     const d = D(), td = today(), y = +td.slice(0, 4), m = +td.slice(5, 7);
     if (!d.activities.length) {
       return `<section class="card empty"><div class="eyebrow">${esc(niceDate(td, true))}</div><h2>Plan your first day</h2><p>Add a shift, your sleep or your commute. Time & Earn works out your hours and gross earnings as you go.</p>
-        <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="add">Add activity</button>${S.demoOn ? '' : '<button class="btn" data-act="demoOn">Try demo data</button>'}</div></section>` + dashMonthCard(y, m);
+        <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="add">Add activity</button>${S.demoOn ? '' : '<button class="btn" data-act="demoOn">Try demo data</button>'}</div></section>` + incomeSection(y, m);
     }
     const P = T.dayStats(d.activities, td, 'planned'), A = T.dayStats(d.activities, td, 'actual');
     return `<section class="card">
@@ -906,7 +1049,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
         <div><span class="label"><i class="key act"></i>Actual</span><span class="big money">${money(A.earnings)}</span><span class="sub">${hrs(A.paidMin)} paid · recorded</span></div>
       </div>
       <div class="gross-note">Gross earnings before tax and deductions.</div>
-    </section>` + dashMonthCard(y, m) + dashTimeCard(td, y, m);
+    </section>` + incomeSection(y, m) + dashTimeCard(td, y, m);
   }
   function dashMonthCard(y, m) {
     const d = D();
@@ -1424,8 +1567,175 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     });
   }
 
+  // ---------------- pay cycles ----------------
+  const basis = () => (settings().incomeBasis === 'pay' ? 'pay' : 'month');
+  function basisSeg() {
+    const b = basis();
+    return `<div class="seg" role="group" aria-label="Count earnings by"><button data-act="basis" data-val="month" aria-pressed="${b === 'month'}">Calendar month</button><button data-act="basis" data-val="pay" aria-pressed="${b === 'pay'}">Pay period</button></div>`;
+  }
+  function incomeSection(y, m) { return `<div style="display:grid;gap:12px">${basisSeg()}${basis() === 'pay' ? dashPayCards() : dashMonthCard(y, m)}</div>`; }
+  const ordinal = (n) => n + ((n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
+  function cycleText(cyc) {
+    const c = T.normCycle(cyc);
+    if (c.type === 'manual') return `${c.periods.length} set pay period${c.periods.length === 1 ? '' : 's'}`;
+    const span = c.startDay === 1 ? 'Calendar month' : `${ordinal(c.startDay)} to the ${ordinal(c.startDay - 1)}`;
+    const pay = c.paydayMonth === 'none' ? 'payday not set' : `paid on the ${ordinal(c.paydayDay)} of ${c.paydayMonth === 'closing' ? 'the closing month' : 'the following month'}`;
+    return span + ', ' + pay;
+  }
+  function payGroups() {
+    const d = D(), groups = new Map();
+    for (const j of d.jobs) {
+      const c = T.normCycle(j.payCycle), sig = T.cycleSignature(c, j.id);
+      if (!groups.has(sig)) groups.set(sig, { key: sig, cycle: c, jobIds: [] });
+      groups.get(sig).jobIds.push(j.id);
+    }
+    const ids = new Set(d.jobs.map((j) => j.id));
+    if (d.activities.some((r) => r.paid && !(r.jobId && ids.has(r.jobId)))) groups.set('none', { key: 'none', cycle: T.normCycle({ type: 'calendar' }), jobIds: ['_none'], noJob: true });
+    return [...groups.values()];
+  }
+  function groupMatcher(g) {
+    if (g.noJob) { const ids = new Set(D().jobs.map((j) => j.id)); return (jid) => !jid || !ids.has(jid); }
+    const set = new Set(g.jobIds); return (jid) => set.has(jid);
+  }
+  const groupName = (g) => g.noJob ? 'Paid work with no job' : g.jobIds.map((id) => job(id).name).join(', ');
+  const jobLabel = (id) => id === '_none' ? 'No job' : (job(id) ? job(id).name : 'Deleted job');
+  function periodRange(per) { return `${niceDate(per.start)} – ${niceDate(per.end)} ${per.end.slice(0, 4)}`; }
+  const periodDays = (per) => T.dayNum(per.end) - T.dayNum(per.start) + 1;
+  const payKey = (jid, per) => jid + '|' + per.start;
+  function payStatus(jid, per) {
+    const rec = (D().payments.records || {})[payKey(jid, per)], td = today();
+    if (rec) return { cls: 'ok', text: `Received ${niceDate(rec.receivedOn)}${rec.amount != null ? ' · ' + money(rec.amount) : ''}`, rec };
+    if (!per.payday) return { cls: '', text: td > per.end ? 'Not marked as received' : (td >= per.start ? 'Period in progress' : 'Upcoming period') };
+    const n = T.dayNum(per.payday) - T.dayNum(td);
+    if (n < 0) return { cls: 'warn', text: `Payday was ${niceDate(per.payday)} · not marked as received` };
+    if (n === 0) return { cls: 'warn', text: 'Payday is today · not marked as received' };
+    return { cls: '', text: `Payday in ${n} day${n === 1 ? '' : 's'} · not received yet` };
+  }
+  function payPeriodCard(g, per, opts) {
+    opts = opts || {};
+    const m = groupMatcher(g), d = D();
+    const P = T.periodStats(d.activities, per.start, per.end, 'planned', m), A = T.periodStats(d.activities, per.start, per.end, 'actual', m);
+    const td = today(), len = periodDays(per);
+    const progress = td >= per.start && td <= per.end ? `Day ${T.dayNum(td) - T.dayNum(per.start) + 1} of ${len}` : (td > per.end ? 'Period ended' : 'Not started');
+    const jobIds = g.noJob ? ['_none'] : g.jobIds;
+    const rows = jobIds.map((jid) => {
+      const st = g.noJob ? null : payStatus(jid, per);
+      const pj = P.byJob[jid] || { paidMin: 0, earnings: 0 }, aj = A.byJob[jid] || { paidMin: 0, earnings: 0 };
+      return `<div class="pjob">
+        <div class="pjob-top"><b>${esc(jobLabel(jid))}</b><span class="num">${hrs(aj.paidMin)} <small>/ plan ${hrs(pj.paidMin)}</small></span></div>
+        <div class="pjob-money"><span><i class="key plan"></i>Expected <b class="money">${money(pj.earnings)}</b></span><span><i class="key act"></i>Recorded <b class="money">${money(aj.earnings)}</b></span></div>
+        ${st ? `<div class="pjob-status"><span class="pstat ${st.cls}">${st.cls === 'ok' ? '✓ ' : ''}${esc(st.text)}</span><button class="btn small-btn" data-act="payMark" data-job="${esc(jid)}" data-start="${per.start}" data-end="${per.end}" data-payday="${per.payday || ''}">${st.rec ? 'Edit' : 'Mark as received'}</button></div>` : '<small>Paid work without a job uses calendar months. Add a job to these shifts to use a pay cycle.</small>'}
+      </div>`;
+    }).join('');
+    return `<section class="card pay-card">
+      <div class="card-head"><div style="min-width:0"><div class="eyebrow">Pay period · ${esc(groupName(g))}</div><h2>${esc(periodRange(per))}</h2></div>${opts.link ? `<button class="btn" data-act="openPay" data-group="${esc(g.key)}" data-start="${per.start}">Details</button>` : ''}</div>
+      <div class="pay-meta"><span><b>${per.payday ? 'Payday ' + esc(niceDate(per.payday, true)) : 'Payday not set'}</b></span><span>${len} days · ${progress} · ${esc(cycleText(g.cycle))}</span></div>
+      <div class="pair">
+        <div><span class="label"><i class="key plan"></i>Planned</span><span class="big money">${money(P.earnings)}</span><span class="sub">${hrs(P.paidMin)} paid · expected</span></div>
+        <div><span class="label"><i class="key act"></i>Actual</span><span class="big money">${money(A.earnings)}</span><span class="sub">${hrs(A.paidMin)} paid · recorded</span></div>
+      </div>
+      <div class="pjobs">${rows}</div>
+      <div class="gross-note">Gross earnings before tax and deductions, from paid work dated ${esc(niceDate(per.start))} to ${esc(niceDate(per.end))} inclusive. "Recorded" is what you've logged; it is only marked as received when you say so.</div>
+    </section>`;
+  }
+  function noPayGroupsCard() {
+    return `<section class="card empty"><h2>No pay periods yet</h2><p>Add a job in Settings and choose its pay cycle. Paid shifts linked to that job will be grouped by pay period.</p><button class="btn primary" data-act="goSettings">Go to Settings</button></section>`;
+  }
+  function dashPayCards() {
+    const groups = payGroups(), td = today();
+    if (!groups.length) return noPayGroupsCard();
+    return groups.map((g) => {
+      const per = T.periodFor(g.cycle, td);
+      if (!per) return `<section class="card"><div class="eyebrow">Pay period · ${esc(groupName(g))}</div><p class="prose" style="margin:0">No pay period covers today. Add one in Settings → Jobs.</p><button class="btn" data-act="editJob" data-id="${esc(g.jobIds[0])}">Edit pay periods</button></section>`;
+      return payPeriodCard(g, per, { link: true });
+    }).join('');
+  }
+  function openPaySheet(el) {
+    const jid = el.dataset.job, per = { start: el.dataset.start, end: el.dataset.end, payday: el.dataset.payday || null };
+    const key = payKey(jid, per), cur = (D().payments.records || {})[key];
+    const rec = T.periodStats(D().activities, per.start, per.end, 'actual', (x) => x === jid).earnings;
+    openSheet({
+      title: 'Payment received', render(sh) {
+        const td = today();
+        const defDate = cur ? cur.receivedOn : (per.payday && per.payday <= td ? per.payday : td);
+        sh.body.innerHTML = `<p class="prose" style="margin:0"><b>${esc(jobLabel(jid))}</b>, pay period ${esc(niceDate(per.start))} – ${esc(niceDate(per.end))}.${per.payday ? ' Payday ' + esc(niceDate(per.payday, true)) + '.' : ''}</p>
+          <div class="preview-line"><span>Recorded gross earnings for this period: <b>${money(rec)}</b></span><span class="muted">The app never marks a salary as paid by itself. Mark it once the money is in your account.</span></div>
+          <div id="perr"></div>
+          <div class="field"><label for="p-date">Date received</label><input type="date" id="p-date" value="${esc(defDate)}"></div>
+          <div class="field"><label for="p-amt">Amount received (${esc(curSymbol())}) <span class="muted">(optional)</span></label><input type="number" inputmode="decimal" step="0.01" min="0" id="p-amt" value="${cur && cur.amount != null ? cur.amount : ''}" placeholder="As shown on your payslip"><span class="hint">This can be your take-home pay. It is kept separate from your gross earnings.</span></div>
+          <div class="sheet-foot">${cur ? '<button class="btn danger" id="p-del">Not received</button>' : ''}<button class="btn primary" id="p-save">${cur ? 'Save' : 'Mark as received'}</button></div>`;
+        $('#p-save', sh.body).onclick = () => {
+          const dt = $('#p-date', sh.body).value, amt = $('#p-amt', sh.body).value;
+          const errs = [];
+          if (!T.isValidDate(dt)) errs.push('Enter the date the money arrived.');
+          if (amt !== '' && (isNaN(+amt) || +amt < 0)) errs.push('Enter an amount of 0 or more, or leave it empty.');
+          if (errs.length) { $('#perr', sh.body).innerHTML = `<div class="errors" role="alert"><strong>Please fix:</strong><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`; return; }
+          const records = Object.assign({}, D().payments.records); records[key] = { receivedOn: dt, amount: amt === '' ? null : T.round2(+amt), markedAt: Date.now() };
+          apply({ payments: { id: 'payments', records } }, 'Marked as received'); closeSheet(sh);
+        };
+        if (cur) $('#p-del', sh.body).onclick = () => { const records = Object.assign({}, D().payments.records); delete records[key]; apply({ payments: { id: 'payments', records } }, 'Marked as not received'); closeSheet(sh); };
+      }
+    });
+  }
+  function viewSummaryPay() {
+    const groups = payGroups();
+    let head = `<div style="display:grid;gap:8px"><h1 style="font-size:24px">Pay periods</h1>${basisSeg()}</div>`;
+    if (!groups.length) return head + noPayGroupsCard();
+    const g = groups.find((x) => x.key === S.ui.payGroup) || groups[0];
+    S.ui.payGroup = g.key;
+    const per = T.periodFor(g.cycle, S.ui.payAnchor || today()) || T.nearestManual(g.cycle, S.ui.payAnchor || today());
+    const chips = groups.length > 1 ? `<div class="chips" role="group" aria-label="Pay cycle">${groups.map((x) => `<button class="chip ${x.key === g.key ? 'on' : ''}" aria-pressed="${x.key === g.key}" data-act="payGroup" data-val="${esc(x.key)}">${esc(groupName(x))}</button>`).join('')}</div><small>These jobs are on different pay cycles, so their totals are shown separately.</small>` : '';
+    if (!per) return head + chips + `<section class="card empty"><h2>No pay periods set</h2><p>Add the dates for ${esc(groupName(g))} in Settings → Jobs.</p></section>`;
+    S.ui.payAnchor = per.start;
+    const prev = T.stepPeriod(g.cycle, per, -1), next = T.stepPeriod(g.cycle, per, 1);
+    const cur = T.periodFor(g.cycle, today());
+    const m = groupMatcher(g), d = D();
+    const P = T.periodStats(d.activities, per.start, per.end, 'planned', m), A = T.periodStats(d.activities, per.start, per.end, 'actual', m);
+    const dates = T.dateRange(per.start, per.end);
+    S.ui.sumData = { P: { days: dates.map((dt) => ({ date: dt, earnings: (P.days[dt] || {}).earnings || 0 })) }, A: { days: dates.map((dt) => ({ date: dt, earnings: (A.days[dt] || {}).earnings || 0 })) } };
+    const jobIds = g.noJob ? ['_none'] : g.jobIds;
+    const table = `<div class="tbl-wrap"><table><thead><tr><th>Job</th><th class="n">Planned</th><th class="n">Actual</th><th class="n">Hours</th></tr></thead><tbody>${jobIds.map((jid) => `<tr><td>${esc(jobLabel(jid))}</td><td class="n">${money((P.byJob[jid] || {}).earnings || 0)}</td><td class="n">${money((A.byJob[jid] || {}).earnings || 0)}</td><td class="n">${hrs((A.byJob[jid] || {}).paidMin || 0)}</td></tr>`).join('')}</tbody><tfoot><tr><td>Total</td><td class="n">${money(P.earnings)}</td><td class="n">${money(A.earnings)}</td><td class="n">${hrs(A.paidMin)}</td></tr></tfoot></table></div>`;
+    return head + chips + `
+      <section class="monthbar">
+        <button class="icon-btn" data-act="payStep" data-val="-1" aria-label="Previous pay period" ${prev ? '' : 'disabled'}>${ICON.left}</button>
+        <div style="flex:1;min-width:0;text-align:center"><b>${esc(periodRange(per))}</b><br><small>${per.payday ? 'Payday ' + esc(niceDate(per.payday)) + ' ' + per.payday.slice(0, 4) : 'Payday not set'}</small></div>
+        <button class="icon-btn" data-act="payStep" data-val="1" aria-label="Next pay period" ${next ? '' : 'disabled'}>${ICON.right}</button>
+      </section>
+      ${cur && cur.start !== per.start ? `<button class="btn" data-act="payNow">Go to current pay period</button>` : ''}
+      ${payPeriodCard(g, per)}
+      <section class="card"><h2>Earnings by job</h2>${table}<small>Planned and actual are counted separately. Planned work never adds to actual earnings.</small></section>
+      <section class="card"><div class="card-head"><h2>Daily earnings</h2><div class="legend-row"><span><i class="key plan"></i>Planned</span><span><i class="key act"></i>Actual</span></div></div>
+        <div class="chart" id="earnChart"></div><div class="tip" id="earnTip" aria-live="polite">Tap a day to see its earnings.</div></section>
+      <section class="card"><h2>Export</h2><p class="prose" style="margin:0">Download the paid work in this pay period, with totals and payment status, as a CSV file.</p><button class="btn primary" data-act="payCsv">Export this pay period as CSV</button></section>`;
+  }
+  function buildPeriodCSV(g, per) {
+    const d = D(), m = groupMatcher(g);
+    const recs = d.activities.filter((r) => r.paid && m(r.jobId || null) && r.date >= T.addDays(per.start, -1) && r.date <= per.end)
+      .sort((a, b) => (a.mode + a.date + a.start).localeCompare(b.mode + b.date + b.start));
+    const rows = [['Mode', 'Date', 'Start', 'End', 'Ends next day', 'Job', 'Hourly rate', 'Paid hours in this period', 'Gross in this period', 'Paid hours (whole shift)', 'Gross (whole shift)', 'Notes']];
+    for (const r of recs) {
+      let pm = 0, pe = 0;
+      [0, 1].forEach((o) => { const dt = T.addDays(r.date, o); if (dt >= per.start && dt <= per.end) { const q = T.portion(r, o); pm += q.paidMin; pe += q.earnings; } });
+      if (pm === 0 && pe === 0) continue;
+      const t = T.recordTotals(r);
+      rows.push([r.mode === 'planned' ? 'Planned' : 'Actual', r.date, r.start, r.end, r.endsNextDay ? 'Yes' : 'No', jobLabel(r.jobId || '_none'), r.rate.toFixed(2), (pm / 60).toFixed(2), T.round2(pe).toFixed(2), (t.paidMin / 60).toFixed(2), T.round2(t.earnings).toFixed(2), r.notes || '']);
+    }
+    const P = T.periodStats(d.activities, per.start, per.end, 'planned', m), A = T.periodStats(d.activities, per.start, per.end, 'actual', m);
+    rows.push([]); rows.push([`Pay period ${per.start} to ${per.end} (inclusive)`, 'Payday', per.payday || 'Not set']);
+    rows.push(['Gross earnings before tax and deductions; currency ' + settings().currency]);
+    rows.push(['', 'Planned', 'Actual', 'Actual paid hours', 'Payment received', 'Amount received']);
+    (g.noJob ? ['_none'] : g.jobIds).forEach((jid) => {
+      const rec = (d.payments.records || {})[payKey(jid, per)];
+      rows.push([jobLabel(jid), T.round2((P.byJob[jid] || {}).earnings || 0).toFixed(2), T.round2((A.byJob[jid] || {}).earnings || 0).toFixed(2), (((A.byJob[jid] || {}).paidMin || 0) / 60).toFixed(2), rec ? rec.receivedOn : 'Not marked', rec && rec.amount != null ? rec.amount.toFixed(2) : '']);
+    });
+    rows.push(['Total', T.round2(P.earnings).toFixed(2), T.round2(A.earnings).toFixed(2), (A.paidMin / 60).toFixed(2)]);
+    if (S.demoOn) rows.push(['DEMO DATA - not real records']);
+    return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+  }
+
   // ---------------- summary ----------------
   function viewSummary() {
+    if (basis() === 'pay') return viewSummaryPay();
     const y = S.ui.sumY, m = S.ui.sumM, d = D();
     const sleepIds = catIdsByRole('sleep');
     const P = T.monthStats(d.activities, y, m, 'planned', sleepIds), A = T.monthStats(d.activities, y, m, 'actual', sleepIds);
@@ -1443,6 +1753,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
         <button class="icon-btn" data-act="sumMonth" data-val="-1" aria-label="Previous month">${ICON.left}</button>
         <div class="mlabel"><h1>${MON[m - 1]} ${y}</h1><small>Monthly summary · tap to pick</small><input type="month" id="sumPick" value="${y}-${T.pad(m)}" aria-label="Choose month and year" data-on="pickSum"></div>
         <button class="icon-btn" data-act="sumMonth" data-val="1" aria-label="Next month">${ICON.right}</button></section>
+      ${basisSeg()}
       ${empty ? `<section class="card empty"><h2>Nothing recorded in ${MON[m - 1]}</h2><p>Add planned or actual activities and this summary fills in straight away.</p><button class="btn primary" data-act="add">Add activity</button></section>` : ''}
       <section class="card">
         <div class="pair">
@@ -1485,7 +1796,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (d.earnings > 0) bars += `<rect x="${x}" y="${yv(d.earnings)}" width="${bw}" height="${ph}" rx="1.5" fill="none" stroke="var(--plan)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
       if (a.earnings > 0) bars += `<rect x="${x + bw * 0.2}" y="${yv(a.earnings)}" width="${bw * 0.6}" height="${ah}" rx="1.5" fill="var(--accent)"/>`;
       bars += `<rect class="hit" data-i="${i}" x="${padL + i * cw}" y="${padT}" width="${cw}" height="${H - padT}" fill="transparent"/>`;
-      if ((i + 1) % 5 === 0 || i === 0) bars += `<text class="axis" x="${padL + i * cw + cw / 2}" y="${H - 5}" text-anchor="middle">${i + 1}</text>`;
+      if ((i + 1) % 5 === 0 || i === 0) bars += `<text class="axis" x="${padL + i * cw + cw / 2}" y="${H - 5}" text-anchor="middle">${+d.date.slice(8)}</text>`;
     });
     host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily planned and actual gross earnings">${g}<line x1="${padL}" x2="${W}" y1="${yv(0)}" y2="${yv(0)}" stroke="var(--muted)" stroke-width="1"/>${bars}<rect id="hl" x="0" y="${padT}" width="0" height="${H - padT - padB}" fill="var(--accent)" opacity=".08" pointer-events="none"/></svg>`;
     const tip = $('#earnTip');
@@ -1536,23 +1847,40 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   let dlCap;
   const dlReady = (async () => { try { dlCap = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dlCap = null; } })();
   async function offerFile(filename, text, label) {
-    await Promise.race([dlReady, new Promise((r) => setTimeout(r, 1500))]);
-    if (dlCap) {
-      try { await dlCap.save({ filename, data: text }); toast('File ready: ' + filename); return; }
-      catch (e) { if (e && e.code === 'declined') { toast('Download cancelled'); return; } if (e && e.code === 'rate_limited') { toast('A download is already waiting for you.'); return; } }
-    } else {
-      // Outside the Claude viewer a normal download link works.
-      try {
-        if (!window.claude) {
-          const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: filename.endsWith('.csv') ? 'text/csv' : 'application/json' })); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded ' + filename); return;
-        }
-      } catch (e) { /* fall through */ }
+    if (window.claude) {
+      // Inside the Claude app: use its download capability.
+      await Promise.race([dlReady, new Promise((r) => setTimeout(r, 1500))]);
+      if (dlCap) {
+        try { await dlCap.save({ filename, data: text }); toast('File ready: ' + filename); return; }
+        catch (e) { if (e && e.code === 'declined') { toast('Download cancelled'); return; } if (e && e.code === 'rate_limited') { toast('A download is already waiting for you.'); return; } }
+      }
+      return copySheet(filename, text, label, false);
     }
+    const type = filename.endsWith('.csv') ? 'text/csv' : 'application/json';
+    // iPhone / iPad (including Home Screen apps): browser downloads are unreliable, so use the Share sheet → "Save to Files".
+    if (navigator.maxTouchPoints > 0 && navigator.share && navigator.canShare) {
+      let file = new File([text], filename, { type });
+      try { if (!navigator.canShare({ files: [file] })) file = new File([text], filename, { type: 'text/plain' }); } catch (e) { /* use as is */ }
+      let can = false; try { can = navigator.canShare({ files: [file] }); } catch (e) { can = false; }
+      if (can) {
+        try { await navigator.share({ files: [file] }); toast('Done. If you chose Save to Files, it is in the Files app.'); return; }
+        catch (e) { if (e && e.name === 'AbortError') { toast('Cancelled. Nothing was saved.'); return; } }
+        return copySheet(filename, text, label, true);
+      }
+    }
+    try {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded ' + filename); return;
+    } catch (e) { return copySheet(filename, text, label, true); }
+  }
+  function copySheet(filename, text, label, shareFailed) {
+    const isBackup = filename.endsWith('.json');
     openSheet({
       title: label, render(sh) {
-        sh.body.innerHTML = `<p class="prose" style="margin:0">Downloads aren't available here. Copy the text below and paste it into a file named <code>${esc(filename)}</code>.</p><textarea id="dl-text" readonly style="min-height:220px;font-family:ui-monospace,monospace;font-size:12px">${esc(text)}</textarea><button class="btn primary" id="dl-copy">Copy to clipboard</button>`;
-        $('#dl-copy', sh.body).onclick = async () => { const ta = $('#dl-text', sh.body); try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (e) { ta.focus(); ta.select(); toast('Text selected. Use Copy.'); } };
+        sh.body.innerHTML = `<p class="prose" style="margin:0">${shareFailed ? 'Your phone could not save the file directly.' : 'Downloads aren\'t available here.'} Copy the text below instead and paste it into a note${isBackup ? ', for example in the Notes app. To restore later, go to Settings → Restore backup → "Or paste the backup text".' : ' or a file named <code>' + esc(filename) + '</code>.'}</p>
+          <button class="btn primary" id="dl-copy">Copy to clipboard</button>
+          <textarea id="dl-text" readonly style="min-height:200px;font-family:ui-monospace,monospace;font-size:12px">${esc(text)}</textarea>`;
+        $('#dl-copy', sh.body).onclick = async () => { const ta = $('#dl-text', sh.body); try { await navigator.clipboard.writeText(text); toast('Copied. Now paste it into a note.'); } catch (e) { ta.focus(); ta.select(); toast('Text selected. Tap Copy.'); } };
       }
     });
   }
@@ -1567,14 +1895,14 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
         <div class="field"><label for="set-cur">Currency</label><select id="set-cur" data-on="currency">${CURRENCIES.map(([c, n]) => `<option value="${c}" ${c === st.currency ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="hint">Changes the symbol only. Amounts are not converted.</span></div>
       </section>
       <section class="card"><div class="card-head"><h2>Jobs</h2><button class="btn" data-act="addJob">Add job</button></div>
-        ${d.jobs.length ? `<div class="list">${d.jobs.map((j) => `<button class="li" data-act="editJob" data-id="${esc(j.id)}"><span class="grow"><b>${esc(j.name)}</b></span><span class="val">${money(j.rate)}/h</span></button>`).join('')}</div>` : '<p class="muted" style="margin:0">No jobs yet. Add one to fill in its hourly rate automatically.</p>'}
-        <small>Changing a default rate only affects shifts you add afterwards. Saved shifts keep their own rate.</small></section>
+        ${d.jobs.length ? `<div class="list">${d.jobs.map((j) => `<button class="li" data-act="editJob" data-id="${esc(j.id)}"><span class="grow"><b>${esc(j.name)}</b><br><small>${esc(cycleText(j.payCycle))}</small></span><span class="val">${money(j.rate)}/h</span></button>`).join('')}</div>` : '<p class="muted" style="margin:0">No jobs yet. Add one to fill in its hourly rate automatically.</p>'}
+        <small>Tap a job to set its pay cycle. Changing a default rate only affects shifts you add afterwards; saved shifts keep their own rate.</small></section>
       <section class="card"><div class="card-head"><h2>Activity categories</h2><button class="btn" data-act="addCat">Add</button></div>
         <div class="list">${d.categories.map((c) => `<button class="li" data-act="editCat" data-id="${esc(c.id)}">${sw(c)}<span class="grow"><b>${esc(c.name)}</b><br><small>${esc((ROLES.find((r) => r[0] === (c.role || '')) || ROLES[8])[1])}</small></span><span class="muted">Edit</span></button>`).join('')}
           <div class="li"><span class="sw un">–</span><span class="grow"><b>Unallocated</b><br><small>Any time with nothing recorded</small></span></div></div></section>
       <section class="card"><h2>Your data</h2>
-        <div class="prose"><p><b>${esc(kind)}</b></p><p>Your records stay on this device, in this browser only. They are not synced to other devices or backed up automatically. Clearing browser data, or deleting the app's website data, removes them.</p><p>Export a backup regularly and keep it somewhere safe, such as iCloud Drive.</p></div>
-        <div class="btn-row"><button class="btn primary" data-act="backup">Export backup (JSON)</button><button class="btn" data-act="restore">Restore backup</button></div>
+        <div class="prose"><p><b>${esc(kind)}</b></p><p>Your records stay on this device, in this browser only. They are not synced to other devices or backed up automatically. Clearing browser data, or deleting the app's website data, removes them.</p><p>Save a backup regularly. On iPhone, tap <b>Save a backup</b>, then choose <b>Save to Files</b> in the Share sheet and pick iCloud Drive or On My iPhone.</p></div>
+        <div class="btn-row"><button class="btn primary" data-act="backup">Save a backup</button><button class="btn" data-act="restore">Restore backup</button></div>
         <small>${S.real.activities.length} activities, ${S.real.jobs.length} jobs, ${S.real.categories.length} categories saved.</small>
         <button class="btn danger" data-act="wipe">Delete all my data</button></section>
       <section class="card"><h2>Demo data</h2><p class="prose" style="margin:0">Explore the app with two months of sample shifts, sleep and travel. Demo records are kept apart from yours: they are never saved and never added to your totals.</p>
@@ -1582,24 +1910,106 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       <section class="card"><h2>How calculations work</h2><div class="prose">
         <p>Gross earnings = paid hours × hourly rate, using exact minutes. Amounts are rounded to 2 decimal places only for display, so totals don't drift.</p>
         <p>Unpaid breaks are taken out of paid time. Rate periods let part of a shift use a different rate; no overtime multiplier is assumed.</p>
-        <p>Overnight activities are split at midnight: each part counts towards its own date and month, and nothing is counted twice.</p>
+        <p>Overnight activities are split at midnight: each part counts towards its own date, month and pay period, and nothing is counted twice.</p>
+        <p>Pay periods include both their start and end dates. A recurring period ends the day before the next one starts, so there are no gaps or overlaps. If the start day doesn't exist in a month (for example the 31st), that month's period starts on its last day.</p>
+        <p>Recorded earnings are your own calculation. A payment only shows as received when you mark it, even after payday.</p>
         <p>Times are local clock times. On a clock-change night, paid time is worked out from the clock times you enter (for example 22:00–06:00 is always 8 hours), even though 7 or 9 real hours pass. The editor warns you, and you can set a paid-time override for that shift.</p>
         <p>Earnings are gross, before tax, National Insurance, pension or other deductions. Take-home pay is not calculated.</p></div></section>`;
   }
   function editJob(id) {
     const j = id ? job(id) : null;
     const used = id ? D().activities.filter((r) => r.jobId === id).length : 0;
+    const c0 = T.normCycle(j && j.payCycle);
+    const state = { name: j ? j.name : '', rate: j ? String(j.rate) : '', cycle: { type: c0.type, startDay: c0.type === 'monthly' ? c0.startDay : 14, paydayDay: c0.paydayDay, paydayMonth: c0.paydayMonth, periods: c0.periods.map((p) => ({ ...p })) }, errors: [] };
+    function readForm(sh) {
+      const v = (x) => { const el = $('#' + x, sh.body); return el ? el.value : undefined; };
+      state.name = (v('j-name') ?? state.name); state.rate = v('j-rate') ?? state.rate;
+      const c = state.cycle;
+      if (v('j-sday') !== undefined) c.startDay = v('j-sday');
+      if (v('j-pmon') !== undefined) c.paydayMonth = v('j-pmon');
+      if (v('j-pday') !== undefined) c.paydayDay = v('j-pday');
+      c.periods = c.periods.map((p, i) => ({ id: p.id, start: v('j-ps-' + i) ?? p.start, end: v('j-pe-' + i) ?? p.end, payday: v('j-pp-' + i) ?? p.payday }));
+    }
+    function cycleForSave() {
+      const c = state.cycle;
+      const out = { type: c.type, paydayMonth: c.type === 'manual' ? 'none' : c.paydayMonth };
+      if (c.type === 'monthly') out.startDay = c.startDay === '' ? NaN : Number(c.startDay);
+      if (c.type !== 'manual') out.paydayDay = out.paydayMonth === 'none' ? 28 : (c.paydayDay === '' ? NaN : Number(c.paydayDay));
+      if (c.type === 'manual') out.periods = c.periods.map((p) => ({ id: p.id || T.uid('pp_'), start: p.start, end: p.end, payday: p.payday || null })).sort((x, y) => String(x.start).localeCompare(String(y.start)));
+      return out;
+    }
+    function previewHtml() {
+      const cyc = cycleForSave(), errs = T.validateCycle(cyc);
+      if (errs.length) return `<div class="errors"><strong>Pay cycle needs attention:</strong><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+      const td = today();
+      let list;
+      if (cyc.type === 'manual') list = T.normCycle(cyc).periods.slice(0, 24);
+      else { const cur = T.periodFor(cyc, td); list = [T.stepPeriod(cyc, cur, -1), cur, T.stepPeriod(cyc, cur, 1), T.stepPeriod(cyc, cur, 2)]; }
+      const rows = list.map((p) => {
+        const now = td >= p.start && td <= p.end;
+        const early = p.payday && p.payday < p.end;
+        return `<tr class="${now ? 'now' : ''}"><td>${esc(niceDate(p.start))} ${p.start.slice(0, 4)}${now ? ' <span class="pstat">Now</span>' : ''}</td><td>${esc(niceDate(p.end))} ${p.end.slice(0, 4)}</td><td class="n">${periodDays(p)}</td><td>${p.payday ? esc(niceDate(p.payday)) + ' ' + p.payday.slice(0, 4) + (early ? '<br><small style="color:var(--warn)">before period ends</small>' : '') : '<span class="muted">Not set</span>'}</td></tr>`;
+      }).join('');
+      return `<div class="tbl-wrap"><table class="ptable"><thead><tr><th>Start</th><th>End</th><th class="n">Days</th><th>Payday</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <small>Start and end dates are both included. ${cyc.type === 'monthly' && +cyc.startDay > 28 ? 'In shorter months the period starts on the last day of the month, and the previous period ends the day before, so there are no gaps or overlaps.' : 'Each period ends the day before the next one starts.'}</small>`;
+    }
     openSheet({
-      title: j ? 'Edit job' : 'Add job', render(sh) {
-        sh.body.innerHTML = `<div id="jerr"></div>
-          <div class="field"><label for="j-name">Job name</label><input type="text" id="j-name" value="${esc(j ? j.name : '')}" maxlength="50" placeholder="e.g. Nursery, Weekend café"></div>
-          <div class="field"><label for="j-rate">Default hourly rate (${esc(curSymbol())})</label><input type="number" inputmode="decimal" step="0.01" min="0" id="j-rate" value="${j ? j.rate : ''}" placeholder="12.74"><span class="hint">Shifts you've already saved keep their own rate.</span></div>
+      title: j ? 'Edit job' : 'Add job', state, render(sh) {
+        const c = state.cycle;
+        const paydaySel = (label) => `<div class="row2"><div class="field"><label for="j-pmon">${label}</label><select id="j-pmon">
+            <option value="none" ${c.paydayMonth === 'none' ? 'selected' : ''}>Not set</option>
+            <option value="closing" ${c.paydayMonth === 'closing' ? 'selected' : ''}>${c.type === 'calendar' ? 'Same month' : 'Closing month'}</option>
+            <option value="following" ${c.paydayMonth === 'following' ? 'selected' : ''}>Following month</option></select></div>
+          ${c.paydayMonth !== 'none' ? `<div class="field"><label for="j-pday">Payday (day)</label><input type="number" inputmode="numeric" min="1" max="31" id="j-pday" value="${esc(c.paydayDay)}"></div>` : '<div></div>'}</div>
+          ${c.paydayMonth !== 'none' ? '<span class="hint">If a month is shorter, payday moves to its last day.' + (c.type === 'monthly' ? ' The closing month is the month a period ends in.' : '') + '</span>' : ''}`;
+        let body = '';
+        if (c.type === 'calendar') body = `<p class="hint" style="margin:0">Each pay period is the 1st to the last day of a month.</p>${paydaySel('Payday month')}`;
+        else if (c.type === 'monthly') body = `<div class="field"><label for="j-sday">Pay period starts on day</label><input type="number" inputmode="numeric" min="1" max="31" id="j-sday" value="${esc(c.startDay)}"><span class="hint">For example 14: periods run 14 Sept – 13 Oct, 14 Oct – 13 Nov…</span></div>${paydaySel('Payday month')}`;
+        else body = `${c.periods.map((p, i) => `<div class="mper"><div class="row2">
+            <div class="field"><label for="j-ps-${i}">Start</label><input type="date" id="j-ps-${i}" value="${esc(p.start || '')}"></div>
+            <div class="field"><label for="j-pe-${i}">End</label><input type="date" id="j-pe-${i}" value="${esc(p.end || '')}"></div></div>
+            <div class="row3" style="grid-template-columns:1fr auto"><div class="field"><label for="j-pp-${i}">Payday <span class="muted">(optional)</span></label><input type="date" id="j-pp-${i}" value="${esc(p.payday || '')}"></div><button class="icon-btn" data-jx="rm" data-i="${i}" aria-label="Remove pay period">${ICON.close}</button></div></div>`).join('')}
+          <button class="btn" data-jx="addp">Add pay period</button>`;
+        sh.body.innerHTML = `<div id="jerr">${state.errors.length ? `<div class="errors" role="alert"><strong>Please fix:</strong><ul>${state.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}</div>
+          ${S.demoOn ? '<div class="banner warn">You are editing demo data. Changes are not saved.</div>' : ''}
+          <div class="field"><label for="j-name">Job name</label><input type="text" id="j-name" value="${esc(state.name)}" maxlength="50" placeholder="e.g. Nursery, Weekend café"></div>
+          <div class="field"><label for="j-rate">Default hourly rate (${esc(curSymbol())})</label><input type="number" inputmode="decimal" step="0.01" min="0" id="j-rate" value="${esc(state.rate)}" placeholder="12.74"><span class="hint">Shifts you've already saved keep their own rate.</span></div>
+          <fieldset><legend>Pay cycle</legend>
+            <div class="seg" role="group" aria-label="Pay cycle type"><button data-jt="calendar" aria-pressed="${c.type === 'calendar'}">Calendar month</button><button data-jt="monthly" aria-pressed="${c.type === 'monthly'}">Monthly dates</button><button data-jt="manual" aria-pressed="${c.type === 'manual'}">Set dates</button></div>
+            ${body}
+          </fieldset>
+          <div class="field"><span class="lbl">Preview</span><div id="j-prev">${previewHtml()}</div></div>
           <div class="sheet-foot">${j ? `<button class="btn danger" id="j-del">Delete</button>` : ''}<button class="btn primary" id="j-save">Save</button></div>`;
+        const rerender = () => { const st = sh.body.scrollTop; sh.render(sh); sh.body.scrollTop = st; };
+        sh.body.oninput = () => { readForm(sh); $('#j-prev', sh.body).innerHTML = previewHtml(); };
+        sh.body.onchange = (e) => { readForm(sh); if (e.target.id === 'j-pmon') rerender(); else $('#j-prev', sh.body).innerHTML = previewHtml(); };
+        $$('[data-jt]', sh.body).forEach((btn) => btn.onclick = () => {
+          readForm(sh); c.type = btn.dataset.jt;
+          if (c.type === 'manual' && !c.periods.length) {
+            const per = T.periodFor({ type: 'monthly', startDay: +c.startDay || 1, paydayDay: +c.paydayDay || 28, paydayMonth: c.paydayMonth }, today());
+            c.periods.push({ id: T.uid('pp_'), start: per.start, end: per.end, payday: per.payday || '' });
+          }
+          rerender();
+        });
+        $$('[data-jx]', sh.body).forEach((btn) => btn.onclick = () => {
+          readForm(sh);
+          if (btn.dataset.jx === 'rm') c.periods.splice(+btn.dataset.i, 1);
+          else {
+            const valid = c.periods.filter((p) => T.isValidDate(p.end)).sort((x, y) => x.end.localeCompare(y.end));
+            const start = valid.length ? T.addDays(valid[valid.length - 1].end, 1) : today();
+            const [ny, nm] = T.addMonths(+start.slice(0, 4), +start.slice(5, 7), 1);
+            c.periods.push({ id: T.uid('pp_'), start, end: T.addDays(T.clampDate(ny, nm, +start.slice(8)), -1), payday: '' });
+          }
+          rerender();
+        });
         $('#j-save', sh.body).onclick = () => {
-          const name = $('#j-name', sh.body).value.trim(), rate = $('#j-rate', sh.body).value;
+          readForm(sh);
+          const name = state.name.trim(), rate = state.rate;
           const errs = []; if (!name) errs.push('Enter a job name.'); if (rate === '' || isNaN(+rate) || +rate < 0) errs.push('Enter a default hourly rate of 0 or more.');
-          if (errs.length) { $('#jerr', sh.body).innerHTML = `<div class="errors" role="alert"><strong>Please fix:</strong><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`; return; }
-          apply({ jobs: { put: [{ id: j ? j.id : T.uid('j_'), name, rate: T.round2(+rate), updatedAt: Date.now() }] } }, j ? 'Job updated. Saved shifts keep their rates.' : 'Job added');
+          const cyc = cycleForSave(); T.validateCycle(cyc).forEach((e) => errs.push(e));
+          if (errs.length) { state.errors = errs; rerender(); sh.body.scrollTop = 0; return; }
+          const rec = Object.assign({}, j || {}, { id: j ? j.id : T.uid('j_'), name, rate: T.round2(+rate), payCycle: T.normCycle(cyc), updatedAt: Date.now() });
+          apply({ jobs: { put: [rec] } }, j ? 'Job updated. Saved shifts keep their rates.' : 'Job added');
           closeSheet(sh);
         };
         if (j) $('#j-del', sh.body).onclick = async () => {
@@ -1639,7 +2049,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   }
   function backupJSON() {
     const r = S.real;
-    return JSON.stringify({ app: 'time-and-earn', schemaVersion: SCHEMA, exportedAt: new Date().toISOString(), data: { settings: r.settings, jobs: r.jobs, categories: r.categories, activities: r.activities } }, null, 1);
+    return JSON.stringify({ app: 'time-and-earn', schemaVersion: SCHEMA, exportedAt: new Date().toISOString(), data: { settings: r.settings, jobs: r.jobs, categories: r.categories, activities: r.activities, payments: r.payments } }, null, 1);
   }
   function openRestore() {
     openSheet({
@@ -1657,9 +2067,10 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
           if (!v) return;
           const settingsNew = Object.assign({}, DEFAULT_SETTINGS, d.settings || {}, { id: 'settings' });
           const wasDemo = S.demoOn; S.demoOn = false;
-          S.real = { settings: settingsNew, jobs: d.jobs, categories: d.categories, activities: d.activities.map((a) => Object.assign({ breaks: [], segments: [] }, a)) };
+          const paymentsNew = { id: 'payments', records: (d.payments && d.payments.records) || {} };
+          S.real = { settings: settingsNew, jobs: d.jobs, categories: d.categories, activities: d.activities.map((a) => Object.assign({ breaks: [], segments: [] }, a)), payments: paymentsNew };
           fmtCache = {};
-          writeChain = writeChain.then(() => Store.commit({ clear: true, activities: { put: S.real.activities }, jobs: { put: S.real.jobs }, categories: { put: S.real.categories }, settings: settingsNew }))
+          writeChain = writeChain.then(() => Store.commit({ clear: true, activities: { put: S.real.activities }, jobs: { put: S.real.jobs }, categories: { put: S.real.categories }, settings: settingsNew, payments: paymentsNew }))
             .then(() => toast(`Restored ${d.activities.length} activities`)).catch(() => toast('Restore could not be saved on this device.'));
           if (wasDemo) S.demo = null;
           closeSheet(sh); renderAll();
@@ -1673,7 +2084,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   // ---------------- demo dataset ----------------
   function buildDemo() {
     const cats = DEFAULT_CATS.map((c) => ({ ...c }));
-    const jobs = [{ id: 'demo_job1', name: 'Day job', rate: 12.74 }, { id: 'demo_job2', name: 'Weekend café', rate: 11.44 }];
+    const jobs = [{ id: 'demo_job1', name: 'Day job', rate: 12.74, payCycle: T.normCycle({ type: 'monthly', startDay: 14, paydayDay: 30, paydayMonth: 'closing' }) }, { id: 'demo_job2', name: 'Weekend café', rate: 11.44, payCycle: T.normCycle({ type: 'calendar', paydayDay: 7, paydayMonth: 'following' }) }];
     const acts = [];
     const td = today(), y = +td.slice(0, 4), m = +td.slice(5, 7);
     const pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
@@ -1710,7 +2121,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     // fix overlaps created by overtime: drop actual records that now overlap
     const clean = [];
     for (const r of acts) { if (!T.findOverlaps(r, clean).length) clean.push(r); }
-    return { settings: S.real.settings, jobs, categories: cats, activities: clean };
+    return { settings: S.real.settings, jobs, categories: cats, activities: clean, payments: emptyPayments() };
   }
 
   // ---------------- events ----------------
@@ -1743,13 +2154,21 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     wipe: async () => {
       const v = await choose('Delete all your data?', `<p>This removes all ${S.real.activities.length} activities, your jobs and your category changes from this device. It can't be undone. Export a backup first if you might need them.</p>`, [{ label: 'Delete everything', val: true, kind: 'danger solid' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
       if (!v) return;
-      S.real = { settings: { ...S.real.settings }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [] };
-      writeChain = writeChain.then(() => Store.commit({ clear: true, categories: { put: S.real.categories }, settings: S.real.settings }));
+      S.real = { settings: { ...S.real.settings }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments() };
+      writeChain = writeChain.then(() => Store.commit({ clear: true, categories: { put: S.real.categories }, settings: S.real.settings, payments: S.real.payments }));
       toast('All data deleted'); renderAll();
     },
     theme: (el) => apply({ settings: Object.assign({}, settings(), { theme: el.dataset.val }) }),
     addJob: () => editJob(null), editJob: (el) => editJob(el.dataset.id),
     addCat: () => editCat(null), editCat: (el) => editCat(el.dataset.id),
+    basis: (el) => { if (basis() !== el.dataset.val) apply({ settings: Object.assign({}, settings(), { incomeBasis: el.dataset.val }) }); },
+    openPay: (el) => { S.ui.payGroup = el.dataset.group; S.ui.payAnchor = el.dataset.start; S.ui.tab = 'summary'; renderAll(); window.scrollTo(0, 0); },
+    payGroup: (el) => { S.ui.payGroup = el.dataset.val; S.ui.payAnchor = today(); renderAll(); },
+    payStep: (el) => { const g = payGroups().find((x) => x.key === S.ui.payGroup); if (!g) return; const cur = T.periodFor(g.cycle, S.ui.payAnchor) || T.nearestManual(g.cycle, S.ui.payAnchor); const nx = cur && T.stepPeriod(g.cycle, cur, +el.dataset.val); if (nx) { S.ui.payAnchor = nx.start; renderAll(); } },
+    payNow: () => { S.ui.payAnchor = today(); renderAll(); },
+    payMark: (el) => openPaySheet(el),
+    payCsv: () => { const g = payGroups().find((x) => x.key === S.ui.payGroup); if (!g) return; const per = T.periodFor(g.cycle, S.ui.payAnchor) || T.nearestManual(g.cycle, S.ui.payAnchor); if (!per) return; offerFile(`time-and-earn-pay-${per.start}-to-${per.end}${S.demoOn ? '-demo' : ''}.csv`, buildPeriodCSV(g, per), 'Export CSV'); },
+    goSettings: () => { S.ui.tab = 'settings'; renderAll(); window.scrollTo(0, 0); },
     demoOn: () => { S.demo = S.demo || buildDemo(); S.demoOn = true; toast('Showing demo data'); renderAll(); },
     demoOff: () => { S.demoOn = false; toast('Back to your data'); renderAll(); }
   };
@@ -1780,6 +2199,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (Array.isArray(data.jobs)) S.real.jobs = data.jobs;
       if (Array.isArray(data.categories) && data.categories.length) S.real.categories = data.categories;
       if (Array.isArray(data.activities)) S.real.activities = data.activities;
+      if (data.payments && data.payments.records && typeof data.payments.records === 'object') S.real.payments = { id: 'payments', records: data.payments.records };
       if (!(Array.isArray(data.categories) && data.categories.length) && Store.kind !== 'memory') Store.commit({ categories: { put: S.real.categories }, settings: S.real.settings }).catch(() => {});
     } catch (e) { console.error(e); toast('Could not read saved data.'); }
     renderAll();
