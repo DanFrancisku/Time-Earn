@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Time &amp; Earn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Time & Earn">
+<meta name="theme-color" content="#2343c4">
+<style>
+/* Layout: one-column phone app shell — sticky top bar, scrolling content, fixed tab bar; editors open as bottom sheets. */
+:root {
+  --bg: #f1f4f2; --surface: #ffffff; --surface-2: #e7ece9; --ink: #142019; --muted: #56645d; --line: #d4dcd7;
+  --accent: #2343c4; --accent-ink: #ffffff; --accent-soft: #e1e7fb; --plan: #9fb0ee;
+  --unalloc: #e2e6e4; --unalloc-line: #cfd6d2; --danger: #b8322a; --danger-soft: #fbe5e2; --warn: #8a5600; --warn-soft: #fbefd6; --ok: #1c7543;
+  --today: #fff3c4; --shadow: 0 1px 2px rgba(20,32,25,.06), 0 8px 24px rgba(20,32,25,.08);
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --r: 14px; --hourw: 34px; --datew: 66px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1311; --surface: #171e1b; --surface-2: #212a26; --ink: #e6ede9; --muted: #9babA3; --line: #2c3632;
+  --accent: #91a6ff; --accent-ink: #0e1311; --accent-soft: #1d2647; --plan: #3d4b86;
+  --unalloc: #262f2b; --unalloc-line: #323d38; --danger: #ff8b80; --danger-soft: #3a1d1a; --warn: #f2b24c; --warn-soft: #33270f; --ok: #6ed39b;
+  --today: #3a3413; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1311; --surface: #171e1b; --surface-2: #212a26; --ink: #e6ede9; --muted: #9babA3; --line: #2c3632;
+  --accent: #91a6ff; --accent-ink: #0e1311; --accent-soft: #1d2647; --plan: #3d4b86;
+  --unalloc: #262f2b; --unalloc-line: #323d38; --danger: #ff8b80; --danger-soft: #3a1d1a; --warn: #f2b24c; --warn-soft: #33270f; --ok: #6ed39b;
+  --today: #3a3413; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+body.locked { overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num, td.n, .money { font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+small, .muted { color: var(--muted); }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* shell */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.topbar-in { max-width: 760px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+.brand b { color: var(--accent); }
+.topbar .spacer { flex: 1; }
+.demo-pill { background: var(--warn-soft); color: var(--warn); font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 99px; border: 1px solid currentColor; }
+main { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 14px calc(150px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 16px; }
+main > * { min-width: 0; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabbar-in { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tab { background: none; border: 0; padding: 8px 4px 9px; display: grid; justify-items: center; gap: 2px; font-size: 12px; font-weight: 600; color: var(--muted); min-height: 56px; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); }
+.fab { position: fixed; z-index: 31; right: max(16px, calc(50% - 364px)); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 99px; padding: 14px 22px 14px 18px; font-weight: 700; font-size: 16px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; min-height: 52px; }
+.fab svg { width: 22px; height: 22px; }
+
+/* banners & cards */
+.banner { border-radius: var(--r); padding: 12px 14px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.banner.warn { background: var(--warn-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
+.banner.err { background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+.banner strong { color: inherit; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.card h2 { font-size: 19px; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gross-note { font-size: 12.5px; color: var(--muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pair > div { background: var(--surface-2); border-radius: 12px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
+.pair .label { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.pair .big { font-family: var(--f-display); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.pair .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.key { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.key.plan { background: repeating-linear-gradient(135deg, var(--plan) 0 3px, transparent 3px 5px); border: 1.5px solid var(--plan); }
+.key.act { background: var(--accent); }
+.meter { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+
+/* buttons & controls */
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; min-height: 44px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--danger); }
+.btn.danger.solid { background: var(--danger); color: var(--surface); border-color: var(--danger); }
+.btn.ghost { background: transparent; }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row > .btn { flex: 1 1 auto; }
+.icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: inline-grid; place-items: center; font-size: 20px; flex: none; }
+.icon-btn svg { width: 20px; height: 20px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); border-radius: 12px; padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; border-radius: 9px; padding: 9px 8px; font-weight: 700; font-size: 15px; min-height: 42px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.seg.mode button[aria-pressed="true"][data-val="planned"] { box-shadow: inset 0 -3px 0 var(--plan), 0 1px 3px rgba(0,0,0,.12); }
+.seg.mode button[aria-pressed="true"][data-val="actual"] { box-shadow: inset 0 -3px 0 var(--accent), 0 1px 3px rgba(0,0,0,.12); }
+.mode-hint { font-size: 13px; color: var(--muted); }
+
+/* forms */
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > label, .field > .lbl { font-size: 14px; font-weight: 700; }
+.field .hint { font-size: 13px; color: var(--muted); }
+input[type=text], input[type=number], input[type=date], input[type=time], input[type=month], select, textarea {
+  width: 100%; min-height: 46px; border: 1px solid var(--line); background: var(--surface); border-radius: 11px; padding: 10px 12px; font-size: 16px; -webkit-appearance: none; appearance: none; }
+select { background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+input[type=date], input[type=time] { display: block; }
+input[type=color] { width: 56px; height: 46px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); padding: 4px; }
+textarea { min-height: 84px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 6px 0; font-weight: 600; }
+.switch input { appearance: none; -webkit-appearance: none; width: 52px; height: 32px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); position: relative; flex: none; transition: background .15s; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.switch input:checked { background: var(--accent); border-color: var(--accent); }
+.switch input:checked::after { transform: translateX(20px); }
+.switch small { display: block; font-weight: 400; }
+fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 0; display: grid; gap: 10px; min-width: 0; }
+legend { font-weight: 700; font-size: 14px; padding: 0 6px; }
+.errors { background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.errors ul { margin: 4px 0 0; padding-left: 18px; }
+.errors strong { color: var(--danger); }
+.invalid { border-color: var(--danger) !important; box-shadow: 0 0 0 1px var(--danger); }
+.preview-line { background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 6px 12px; font-size: 14px; font-weight: 600; min-height: 38px; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+label.chip:has(input:checked) { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip.small { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+
+/* legend */
+.legend { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.legend::-webkit-scrollbar { display: none; }
+.lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; font-weight: 600; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px 4px 4px; }
+.sw { display: inline-grid; place-items: center; min-width: 26px; height: 22px; border-radius: 6px; font-size: 11px; font-weight: 800; padding: 0 4px; letter-spacing: .02em; }
+.sw.un { background: var(--unalloc); color: var(--muted); border: 1px dashed var(--unalloc-line); }
+
+/* planner header */
+.monthbar { display: flex; align-items: center; gap: 8px; }
+.monthbar h1 { font-size: 24px; flex: 1; min-width: 0; }
+.monthbar .mlabel { position: relative; flex: 1; min-width: 0; }
+.monthbar .mlabel input { position: absolute; inset: 0; opacity: 0; width: 100%; }
+.monthbar .mlabel h1 { pointer-events: none; }
+.monthbar .mlabel small { display: block; font-weight: 500; pointer-events: none; }
+
+/* month timeline */
+.tl-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tl { overflow: auto; max-height: calc(100dvh - 330px); min-height: 280px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.tl-grid { width: calc(var(--datew) + 24 * var(--hourw)); }
+.tl-head { display: flex; position: sticky; top: 0; z-index: 3; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tl-corner { position: sticky; left: 0; z-index: 4; width: var(--datew); flex: none; background: var(--surface); font-size: 11px; font-weight: 700; color: var(--muted); padding: 6px 8px; border-right: 1px solid var(--line); }
+.tl-hours { display: flex; }
+.tl-hours span { width: var(--hourw); flex: none; font-size: 10.5px; color: var(--muted); padding: 7px 0 5px 3px; font-variant-numeric: tabular-nums; border-left: 1px solid var(--line); }
+.tl-row { display: flex; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; border-bottom: 1px solid var(--line); min-height: 46px; }
+.tl-row:last-child { border-bottom: 0; }
+.tl-date { position: sticky; left: 0; z-index: 2; width: var(--datew); flex: none; background: var(--surface); border-right: 1px solid var(--line); padding: 4px 8px; display: grid; align-content: center; line-height: 1.15; }
+.tl-date .wd { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tl-date .dn { font-family: var(--f-display); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tl-date .de { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tl-row.weekend .tl-date .wd { color: var(--accent); }
+.tl-row.today .tl-date { background: var(--today); box-shadow: inset 4px 0 0 var(--accent); }
+.tl-row.today { background: var(--today); }
+.tl-track { position: relative; width: calc(24 * var(--hourw)); flex: none; background-color: var(--unalloc); background-image: repeating-linear-gradient(90deg, var(--unalloc-line) 0 1px, transparent 1px var(--hourw)); margin: 5px 0; border-radius: 6px; }
+.bar { position: absolute; top: 0; bottom: 0; background: var(--c); border-radius: 4px; display: flex; align-items: center; overflow: hidden; box-shadow: 0 0 0 1px var(--surface); }
+.bar.planned { background: repeating-linear-gradient(135deg, var(--c) 0 7px, color-mix(in srgb, var(--c) 72%, var(--surface)) 7px 10px); }
+.bar em { font-style: normal; font-size: 11px; font-weight: 800; color: var(--ink2, #111); padding: 0 5px; white-space: nowrap; letter-spacing: .02em; }
+.tl-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* empty state */
+.empty { text-align: center; padding: 28px 18px; display: grid; gap: 10px; justify-items: center; }
+.empty h2 { font-size: 21px; }
+.empty p { margin: 0; color: var(--muted); max-width: 34ch; }
+
+/* sheets */
+.sheet-wrap { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+.scrim { position: absolute; inset: 0; background: rgba(8,12,10,.45); animation: fade .18s ease-out; }
+.sheet { position: relative; background: var(--bg); width: 100%; max-width: 640px; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)); border-radius: 20px 20px 0 0; display: flex; flex-direction: column; animation: rise .22s cubic-bezier(.2,.8,.2,1); box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
+.sheet.full { height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)); }
+.sheet-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px 18px; border-bottom: 1px solid var(--line); background: var(--surface); border-radius: 20px 20px 0 0; }
+.sheet-head h2 { flex: 1; font-size: 19px; min-width: 0; }
+.sheet-head::before { content: ""; position: absolute; top: 6px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 4px; background: var(--line); }
+.sheet-body { overflow-y: auto; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; align-content: start; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; flex: 1; }
+.sheet-body > * { min-width: 0; }
+.sheet-foot { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom, 0px)); background: var(--bg); padding: 10px 0 calc(4px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; border-top: 1px solid var(--line); margin-top: 4px; }
+.sheet-foot .btn { flex: 1; }
+@keyframes rise { from { transform: translateY(40px); opacity: .4; } }
+@keyframes fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .scrim { animation: none; } }
+
+/* day view */
+.daynav { display: flex; align-items: center; gap: 8px; }
+.daynav .dt { flex: 1; text-align: center; font-weight: 700; }
+.totals3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.totals3 > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 2px; min-width: 0; }
+.totals3 .t { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.totals3 .v { font-family: var(--f-display); font-weight: 700; font-size: 19px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; line-height: 1.2; }
+.totals3 .s { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.alist { display: grid; gap: 8px; }
+.aitem { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; text-align: left; width: 100%; min-height: 56px; }
+.aitem .sw { min-width: 34px; height: 34px; border-radius: 9px; font-size: 12px; }
+.aitem .nm { font-weight: 700; overflow-wrap: anywhere; }
+.aitem .tm { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.aitem .rt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; }
+.aitem .rt small { display: block; font-weight: 500; }
+.aitem.cont { border-style: dashed; }
+.vt { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 6px; }
+.vt-col { position: relative; height: calc(24 * 30px); background-color: var(--unalloc); background-image: repeating-linear-gradient(180deg, var(--unalloc-line) 0 1px, transparent 1px 30px); border-radius: 8px; }
+.vt-hours { position: relative; height: calc(24 * 30px); }
+.vt-hours span { position: absolute; right: 2px; font-size: 11px; color: var(--muted); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+.vt-head { font-size: 12px; font-weight: 700; text-align: center; display: flex; gap: 5px; align-items: center; justify-content: center; }
+.vblock { position: absolute; left: 3px; right: 3px; border-radius: 6px; background: var(--c); border: 0; padding: 2px 6px; text-align: left; overflow: hidden; display: block; box-shadow: 0 0 0 1px var(--surface); }
+.vblock.planned { background: repeating-linear-gradient(135deg, var(--c) 0 7px, color-mix(in srgb, var(--c) 72%, var(--surface)) 7px 10px); }
+.vblock span { font-size: 11.5px; font-weight: 700; color: var(--ink2, #111); line-height: 1.2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* lists & tables */
+.list { display: grid; }
+.li { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); min-height: 48px; }
+.li:last-child { border-bottom: 0; }
+.li .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.li .val { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+button.li { background: none; border-left: 0; border-right: 0; border-top: 0; width: 100%; text-align: left; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 6px 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.n, td.n { text-align: right; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tfoot td { font-weight: 800; border-top: 2px solid var(--line); }
+.stack { display: flex; height: 16px; border-radius: 6px; overflow: hidden; background: var(--unalloc); }
+.stack i { height: 100%; box-shadow: 1px 0 0 var(--surface); }
+
+/* charts */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .axis { fill: var(--muted); font-size: 10px; font-family: var(--f-body); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.tip { min-height: 40px; font-size: 13.5px; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
+.legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; font-weight: 600; align-items: center; }
+.legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+.hbar { display: grid; gap: 4px; padding: 6px 0; }
+.hbar .top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.hbar .top b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hbar .tracks { display: grid; gap: 3px; }
+.hbar .tr { height: 10px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.hbar .tr i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.hbar .tr i.p { background: repeating-linear-gradient(135deg, var(--c) 0 4px, transparent 4px 6px); box-shadow: inset 0 0 0 1px var(--c); }
+
+/* misc */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(136px + env(safe-area-inset-bottom, 0px)); z-index: 200; background: var(--ink); color: var(--bg); padding: 11px 16px; border-radius: 12px; font-weight: 600; font-size: 14.5px; max-width: calc(100% - 32px); box-shadow: var(--shadow); }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal .h { font-size: 11px; font-weight: 700; text-align: center; color: var(--muted); }
+.cal button { aspect-ratio: 1; max-width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; font-variant-numeric: tabular-nums; min-height: 40px; }
+.cal button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cal button.src { outline: 2px dashed var(--accent); outline-offset: -4px; }
+.cal button[disabled] { opacity: .35; }
+.datelist { display: flex; flex-wrap: wrap; gap: 5px; }
+.datelist span { font-size: 13px; padding: 3px 8px; border-radius: 8px; background: var(--surface-2); font-variant-numeric: tabular-nums; }
+.datelist span.c { background: var(--warn-soft); color: var(--warn); font-weight: 700; }
+.conf { font-size: 14px; border-left: 3px solid var(--warn); padding: 4px 0 4px 10px; }
+.prose p { margin: 0 0 8px; }
+.prose p:last-child { margin: 0; }
+.prose { font-size: 14.5px; }
+details summary { cursor: pointer; font-weight: 700; min-height: 40px; display: flex; align-items: center; }
+code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+@media (min-width: 700px) { :root { --hourw: 40px; --datew: 76px; } }
+
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-in"><span class="brand">Time <b>&amp;</b> Earn</span><span class="spacer"></span><span class="demo-pill" id="demoPill" hidden>Demo data</span></div></header>
+<main id="main" aria-live="polite"><section class="card empty"><h2>Loading your schedule…</h2></section></main>
+<button class="fab" id="fab" data-act="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add activity</button>
+<nav class="tabbar" aria-label="Main"><div class="tabbar-in">
+  <button class="tab" data-act="tab" data-tab="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
+  <button class="tab" data-act="tab" data-tab="planner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h8"/></svg>Planner</button>
+  <button class="tab" data-act="tab" data-tab="summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Summary</button>
+  <button class="tab" data-act="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</button>
+</div></nav>
+<script>
+/* Time & Earn — calculation core (pure functions, no DOM).
+   All activity times are local wall-clock times. Dates are 'YYYY-MM-DD' strings
+   handled with UTC arithmetic only, so no timezone can shift a date. */
+(function (root) {
+  'use strict';
+  const DAY = 1440;
+  const pad = (n) => String(n).padStart(2, '0');
+
+  // ---------- dates ----------
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  function isValidDate(s) {
+    if (typeof s !== 'string' || !DATE_RE.test(s)) return false;
+    const [y, m, d] = s.split('-').map(Number);
+    return m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m);
+  }
+  function dayNum(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return Math.round(Date.UTC(y, m - 1, d) / 86400000);
+  }
+  function fromDayNum(n) {
+    const dt = new Date(n * 86400000);
+    return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());
+  }
+  const addDays = (s, k) => fromDayNum(dayNum(s) + k);
+  function daysInMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m = 1..12
+  const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const weekday = (s) => new Date(dayNum(s) * 86400000).getUTCDay(); // 0 = Sunday
+  const monthKey = (s) => s.slice(0, 7);
+  function monthDates(y, m) {
+    const out = [];
+    for (let d = 1; d <= daysInMonth(y, m); d++) out.push(y + '-' + pad(m) + '-' + pad(d));
+    return out;
+  }
+  function dateRange(from, to) {
+    const out = [];
+    for (let n = dayNum(from); n <= dayNum(to); n++) out.push(fromDayNum(n));
+    return out;
+  }
+  function localToday(now) {
+    now = now || new Date();
+    return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+  }
+
+  // ---------- times ----------
+  function parseTime(t) {
+    if (typeof t !== 'string' || !/^\d{1,2}:\d{2}$/.test(t)) return NaN;
+    const [h, m] = t.split(':').map(Number);
+    if (h > 23 || m > 59) return NaN;
+    return h * 60 + m;
+  }
+  const fmtTime = (min) => { min = ((min % DAY) + DAY) % DAY; return pad(Math.floor(min / 60)) + ':' + pad(min % 60); };
+  function fmtDur(min) {
+    min = Math.round(min);
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + 'h ' + pad(m) + 'm';
+  }
+  const hours = (min) => min / 60;
+
+  /** Record span in minutes from midnight of record.date. End may exceed 1440 (next day). */
+  function span(r) {
+    const s = parseTime(r.start);
+    let e = parseTime(r.end);
+    if (r.endsNextDay) e += DAY;
+    return { s, e };
+  }
+  /** Convert a time inside the shift to minutes relative to record.date midnight. */
+  function toShiftAbs(t, s) { return t >= s ? t : t + DAY; }
+  function subInterval(it, s) {
+    const a = toShiftAbs(parseTime(it.start), s);
+    let b = toShiftAbs(parseTime(it.end), s);
+    if (b <= a) b += DAY;
+    return [a, b];
+  }
+
+  // ---------- validation ----------
+  /** Returns list of {field, msg}. Empty list = valid. Does not check overlaps. */
+  function validateRecord(r) {
+    const errs = [];
+    if (r.mode !== 'planned' && r.mode !== 'actual') errs.push({ field: 'mode', msg: 'Choose Planned or Actual.' });
+    if (!isValidDate(r.date)) errs.push({ field: 'date', msg: 'Enter a valid date.' });
+    const s = parseTime(r.start), eRaw = parseTime(r.end);
+    if (isNaN(s)) errs.push({ field: 'start', msg: 'Enter a start time.' });
+    if (isNaN(eRaw)) errs.push({ field: 'end', msg: 'Enter an end time.' });
+    if (!r.categoryId) errs.push({ field: 'category', msg: 'Choose a category.' });
+    if (errs.length) return errs;
+    const { e } = span(r);
+    if (e <= s) {
+      errs.push({ field: 'end', msg: r.endsNextDay ? 'End time is invalid.' : 'The end time is before the start. If this finishes after midnight, turn on "Ends the following day".' });
+      return errs;
+    }
+    if (e - s > DAY) errs.push({ field: 'end', msg: 'An activity can last at most 24 hours.' });
+    if (r.paid) {
+      if (!(typeof r.rate === 'number' && isFinite(r.rate) && r.rate >= 0)) errs.push({ field: 'rate', msg: 'Enter an hourly rate of 0 or more.' });
+    }
+    const checkList = (list, field, label) => {
+      const ivs = [];
+      (list || []).forEach((it, i) => {
+        const a = parseTime(it.start), b = parseTime(it.end);
+        if (isNaN(a) || isNaN(b)) { errs.push({ field, msg: label + ' ' + (i + 1) + ' needs a start and end time.' }); return; }
+        const iv = subInterval(it, s);
+        if (iv[0] < s || iv[1] > e || iv[1] - iv[0] > e - s) { errs.push({ field, msg: label + ' ' + (i + 1) + ' (' + it.start + '–' + it.end + ') must be inside the shift.' }); return; }
+        if (field === 'segments' && !(typeof it.rate === 'number' && isFinite(it.rate) && it.rate >= 0)) errs.push({ field, msg: label + ' ' + (i + 1) + ' needs a rate.' });
+        ivs.push(iv.concat(i));
+      });
+      ivs.sort((x, y) => x[0] - y[0]);
+      for (let k = 1; k < ivs.length; k++) if (ivs[k][0] < ivs[k - 1][1]) errs.push({ field, msg: label + 's ' + (ivs[k - 1][2] + 1) + ' and ' + (ivs[k][2] + 1) + ' overlap.' });
+    };
+    if (r.paid) {
+      checkList(r.breaks, 'breaks', 'Break');
+      checkList(r.segments, 'segments', 'Rate period');
+    }
+    if (r.paidOverrideMin != null && r.paidOverrideMin !== '') {
+      const o = r.paidOverrideMin;
+      if (!(typeof o === 'number' && o >= 0 && o <= DAY + 60)) errs.push({ field: 'override', msg: 'Paid time override must be between 0 and 25 hours.' });
+    }
+    return errs;
+  }
+
+  // ---------- earnings ----------
+  /** Paid pieces of a record: [{a, b, rate}] in minutes relative to record.date. */
+  function paidPieces(r) {
+    if (!r.paid) return [];
+    const { s, e } = span(r);
+    let pieces = [[s, e]];
+    for (const br of r.breaks || []) {
+      const [ba, bb] = subInterval(br, s);
+      const next = [];
+      for (const [a, b] of pieces) {
+        if (bb <= a || ba >= b) { next.push([a, b]); continue; }
+        if (ba > a) next.push([a, ba]);
+        if (bb < b) next.push([bb, b]);
+      }
+      pieces = next;
+    }
+    const segs = (r.segments || []).map((g) => { const [a, b] = subInterval(g, s); return { a, b, rate: g.rate }; }).sort((x, y) => x.a - y.a);
+    const out = [];
+    for (const [a, b] of pieces) {
+      // cut by segment boundaries
+      const cuts = new Set([a, b]);
+      for (const g of segs) { if (g.a > a && g.a < b) cuts.add(g.a); if (g.b > a && g.b < b) cuts.add(g.b); }
+      const pts = [...cuts].sort((x, y) => x - y);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const mid = (pts[i] + pts[i + 1]) / 2;
+        const g = segs.find((q) => mid > q.a && mid < q.b);
+        out.push({ a: pts[i], b: pts[i + 1], rate: g ? g.rate : r.rate });
+      }
+    }
+    return out;
+  }
+
+  /** Full-record figures. earnings unrounded. */
+  function recordTotals(r) {
+    const { s, e } = span(r);
+    const pcs = paidPieces(r);
+    let paidMin = 0, earn = 0;
+    for (const p of pcs) { paidMin += p.b - p.a; earn += (p.b - p.a) * p.rate / 60; }
+    let factor = 1;
+    if (r.paid && r.paidOverrideMin != null && r.paidOverrideMin !== '') {
+      if (paidMin > 0) { factor = r.paidOverrideMin / paidMin; earn *= factor; }
+      else earn = r.paidOverrideMin * (r.rate || 0) / 60;
+      paidMin = r.paidOverrideMin;
+    }
+    return { totalMin: e - s, paidMin, earnings: earn, breakMin: r.paid ? (r.breaks || []).reduce((t, b) => { const [a, c] = subInterval(b, s); return t + (c - a); }, 0) : 0, factor };
+  }
+
+  /** Portion of record that falls on its own date (offset 0) or the next date (offset 1). */
+  function portion(r, offset) {
+    const { s, e } = span(r);
+    const w0 = offset * DAY, w1 = w0 + DAY;
+    const a = Math.max(s, w0), b = Math.min(e, w1);
+    const min = Math.max(0, b - a);
+    let paidMin = 0, earn = 0;
+    for (const p of paidPieces(r)) {
+      const pa = Math.max(p.a, w0), pb = Math.min(p.b, w1);
+      if (pb > pa) { paidMin += pb - pa; earn += (pb - pa) * p.rate / 60; }
+    }
+    if (r.paid && r.paidOverrideMin != null && r.paidOverrideMin !== '') {
+      const t = recordTotals(r);
+      const rawPaid = paidPieces(r).reduce((x, p) => x + p.b - p.a, 0);
+      if (rawPaid > 0) { const f = r.paidOverrideMin / rawPaid; paidMin *= f; earn *= f; }
+      else { const share = (e - s) > 0 ? min / (e - s) : 0; paidMin = r.paidOverrideMin * share; earn = t.earnings * share; }
+    }
+    return { min, paidMin, earnings: earn, from: a - w0, to: b - w0 };
+  }
+
+  /** Fragments shown on a given date: [{rec, from, to}] from records on date or overflowing from date-1. */
+  function fragmentsForDate(records, date) {
+    const prev = addDays(date, -1);
+    const out = [];
+    for (const r of records) {
+      if (r.date === date) { const p = portion(r, 0); if (p.min > 0) out.push({ rec: r, from: p.from, to: p.to, part: p, cont: false }); }
+      else if (r.date === prev) { const p = portion(r, 1); if (p.min > 0) out.push({ rec: r, from: p.from, to: p.to, part: p, cont: true }); }
+    }
+    return out.sort((x, y) => x.from - y.from);
+  }
+
+  // ---------- overlaps ----------
+  function absSpan(r) { const { s, e } = span(r); const base = dayNum(r.date) * DAY; return [base + s, base + e]; }
+  /** Existing records (same mode) that overlap candidate. */
+  function findOverlaps(cand, records, excludeIds) {
+    const ex = excludeIds instanceof Set ? excludeIds : new Set(excludeIds || []);
+    const [a, b] = absSpan(cand);
+    return records.filter((r) => r.mode === cand.mode && r.id !== cand.id && !ex.has(r.id) && (() => { const [c, d] = absSpan(r); return a < d && c < b; })());
+  }
+
+  // ---------- aggregation ----------
+  function emptyStats() { return { allocated: 0, paidMin: 0, earnings: 0, byCat: {}, byJob: {}, count: 0 }; }
+  function dayStats(records, date, mode) {
+    const st = emptyStats();
+    for (const f of fragmentsForDate(records.filter((r) => r.mode === mode), date)) {
+      const r = f.rec, p = f.part;
+      st.count++;
+      st.allocated += p.min;
+      st.byCat[r.categoryId] = (st.byCat[r.categoryId] || 0) + p.min;
+      st.paidMin += p.paidMin;
+      st.earnings += p.earnings;
+      if (r.paid) {
+        const k = r.jobId || '_none';
+        const j = st.byJob[k] || (st.byJob[k] = { paidMin: 0, earnings: 0 });
+        j.paidMin += p.paidMin; j.earnings += p.earnings;
+      }
+    }
+    st.unallocated = Math.max(0, DAY - st.allocated);
+    return st;
+  }
+  function monthStats(records, y, m, mode, sleepCatIds) {
+    const dates = monthDates(y, m);
+    const days = dates.map((d) => Object.assign({ date: d }, dayStats(records, d, mode)));
+    const tot = emptyStats();
+    for (const d of days) {
+      tot.allocated += d.allocated; tot.paidMin += d.paidMin; tot.earnings += d.earnings; tot.count += d.count;
+      for (const k in d.byCat) tot.byCat[k] = (tot.byCat[k] || 0) + d.byCat[k];
+      for (const k in d.byJob) { const j = tot.byJob[k] || (tot.byJob[k] = { paidMin: 0, earnings: 0 }); j.paidMin += d.byJob[k].paidMin; j.earnings += d.byJob[k].earnings; }
+    }
+    const sl = new Set(sleepCatIds || []);
+    const sleepDays = days.filter((d) => Object.keys(d.byCat).some((k) => sl.has(k) && d.byCat[k] > 0));
+    const sleepTotal = sleepDays.reduce((t, d) => t + Object.keys(d.byCat).filter((k) => sl.has(k)).reduce((x, k) => x + d.byCat[k], 0), 0);
+    tot.sleep = { days: sleepDays.map((d) => d.date), totalMin: sleepTotal, avgMin: sleepDays.length ? sleepTotal / sleepDays.length : null };
+    return { days, tot };
+  }
+
+  // ---------- repeats & batches ----------
+  let idCounter = 0;
+  function uid(prefix) {
+    const r = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2) + (idCounter++));
+    return (prefix || '') + r;
+  }
+  function weekdayDates(from, to, weekdays) {
+    const ws = new Set(weekdays);
+    return dateRange(from, to).filter((d) => ws.has(weekday(d)));
+  }
+  function cloneRecord(r, patch) {
+    const c = JSON.parse(JSON.stringify(r));
+    return Object.assign(c, patch || {});
+  }
+  /**
+   * Plan a batch: candidates to add (and ids they would replace, e.g. series members being edited).
+   * Returns {items:[{rec, conflicts:[existing], internal:bool}], conflictCount}.
+   */
+  function planBatch(adds, existing, replaceIds) {
+    const ex = new Set(replaceIds || []);
+    const accepted = [];
+    const items = adds.map((rec) => {
+      const conflicts = findOverlaps(rec, existing, ex);
+      const internal = findOverlaps(rec, accepted, []).length > 0;
+      if (!internal) accepted.push(rec);
+      return { rec, conflicts, internal };
+    });
+    return { items, replaceIds: [...ex], conflictCount: items.filter((i) => i.conflicts.length || i.internal).length };
+  }
+  /** Resolve a plan. strategy: 'skip' | 'replace'. Returns {put:[records], del:[ids]} */
+  function resolveBatch(plan, strategy) {
+    // Excluded ids (records being edited in place) are never deleted here: an edited record
+    // keeps its id, so a skipped edit leaves the original untouched.
+    const put = [], del = new Set();
+    for (const it of plan.items) {
+      if (it.internal) continue;
+      if (it.conflicts.length) {
+        if (strategy !== 'replace') continue;
+        it.conflicts.forEach((c) => del.add(c.id));
+      }
+      put.push(it.rec);
+    }
+    // a put record keeps its id when editing; don't delete what we're putting
+    put.forEach((p) => del.delete(p.id));
+    return { put, del: [...del] };
+  }
+  /** Copy all records of `mode` that start on srcDate to each target date. */
+  function copyDayRecords(records, srcDate, mode, targets, toMode) {
+    const src = records.filter((r) => r.mode === mode && r.date === srcDate);
+    const out = [];
+    const seriesFor = {};
+    for (const t of targets) {
+      if (t === srcDate && (toMode || mode) === mode) continue;
+      for (const r of src) {
+        const sid = toMode && toMode !== mode ? null : (seriesFor[r.id] || (seriesFor[r.id] = r.seriesId || uid('s_')));
+        out.push(cloneRecord(r, { id: uid('a_'), date: t, mode: toMode || mode, seriesId: sid, copiedFrom: r.id, createdAt: Date.now(), updatedAt: Date.now() }));
+      }
+    }
+    return { adds: out, seriesFor };
+  }
+  /** Repeat the week starting `weekStart` (7 days) onto every date in [from,to] by weekday. */
+  function repeatWeek(records, weekStart, mode, from, to) {
+    const srcDates = dateRange(weekStart, addDays(weekStart, 6));
+    const byWd = {};
+    srcDates.forEach((d) => { byWd[weekday(d)] = d; });
+    const srcSet = new Set(srcDates);
+    const out = [], seriesFor = {};
+    for (const t of dateRange(from, to)) {
+      if (srcSet.has(t)) continue;
+      const sd = byWd[weekday(t)];
+      for (const r of records.filter((x) => x.mode === mode && x.date === sd)) {
+        const sid = seriesFor[r.id] || (seriesFor[r.id] = r.seriesId || uid('s_'));
+        out.push(cloneRecord(r, { id: uid('a_'), date: t, seriesId: sid, copiedFrom: r.id, createdAt: Date.now(), updatedAt: Date.now() }));
+      }
+    }
+    return { adds: out, seriesFor };
+  }
+
+  // ---------- DST ----------
+  /** Real elapsed minutes between two local wall-clock times (uses the device's timezone rules). */
+  function elapsedMinutes(r) {
+    const [y, m, d] = r.date.split('-').map(Number);
+    const { s, e } = span(r);
+    const a = new Date(y, m - 1, d, 0, s);
+    const b = new Date(y, m - 1, d, 0, e);
+    return Math.round((b - a) / 60000);
+  }
+  function dstDifference(r) { const { s, e } = span(r); return elapsedMinutes(r) - (e - s); }
+
+  // ---------- money ----------
+  const round2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
+
+  // ---------- backup validation ----------
+  function validateBackup(obj) {
+    const errs = [];
+    if (!obj || typeof obj !== 'object') return ['The file is not a Time & Earn backup.'];
+    if (obj.app !== 'time-and-earn') errs.push('This file was not made by Time & Earn.');
+    const d = obj.data;
+    if (!d || typeof d !== 'object') { errs.push('The backup has no data section.'); return errs; }
+    for (const k of ['activities', 'jobs', 'categories']) if (!Array.isArray(d[k])) errs.push('The backup is missing its ' + k + ' list.');
+    if (errs.length) return errs;
+    const catIds = new Set(d.categories.map((c) => c.id));
+    d.categories.forEach((c, i) => { if (!c.id || !c.name || !/^#[0-9a-fA-F]{6}$/.test(c.color || '')) errs.push('Category ' + (i + 1) + ' is incomplete.'); });
+    d.jobs.forEach((j, i) => { if (!j.id || !j.name || typeof j.rate !== 'number') errs.push('Job ' + (i + 1) + ' is incomplete.'); });
+    const ids = new Set();
+    d.activities.forEach((r, i) => {
+      if (!r.id || ids.has(r.id)) errs.push('Activity ' + (i + 1) + ' has a missing or repeated id.');
+      ids.add(r.id);
+      const v = validateRecord(r);
+      if (v.length) errs.push('Activity ' + (i + 1) + ' (' + (r.date || '?') + '): ' + v[0].msg);
+      if (r.categoryId && !catIds.has(r.categoryId)) errs.push('Activity ' + (i + 1) + ' uses an unknown category.');
+    });
+    // overlaps inside the backup
+    for (const mode of ['planned', 'actual']) {
+      const list = d.activities.filter((r) => r.mode === mode && validateRecord(r).length === 0).map((r) => ({ r, iv: absSpan(r) })).sort((x, y) => x.iv[0] - y.iv[0]);
+      for (let k = 1; k < list.length; k++) if (list[k].iv[0] < list[k - 1].iv[1]) { errs.push('Two ' + mode + ' activities overlap on ' + list[k].r.date + '.'); break; }
+    }
+    return errs.slice(0, 12);
+  }
+
+  const api = { DAY, pad, isValidDate, dayNum, fromDayNum, addDays, daysInMonth, isLeapYear, weekday, monthKey, monthDates, dateRange, localToday,
+    parseTime, fmtTime, fmtDur, hours, span, subInterval, validateRecord, paidPieces, recordTotals, portion, fragmentsForDate,
+    absSpan, findOverlaps, dayStats, monthStats, uid, weekdayDates, cloneRecord, planBatch, resolveBatch, copyDayRecords, repeatWeek,
+    elapsedMinutes, dstDifference, round2, validateBackup };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TE = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Time & Earn — app (UI, storage, export). Depends on TE (core.js). */
+(function () {
+  'use strict';
+  const T = window.TE;
+  const SCHEMA = 1;
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const CURRENCIES = [['GBP', 'British pound (£)'], ['EUR', 'Euro (€)'], ['USD', 'US dollar ($)'], ['CAD', 'Canadian dollar ($)'], ['AUD', 'Australian dollar ($)'], ['NZD', 'New Zealand dollar ($)'], ['INR', 'Indian rupee (₹)'], ['LKR', 'Sri Lankan rupee (Rs)'], ['MYR', 'Malaysian ringgit (RM)'], ['SGD', 'Singapore dollar ($)'], ['AED', 'UAE dirham'], ['ZAR', 'South African rand (R)']];
+  const ROLES = [['sleep', 'Sleep'], ['work', 'Paid work'], ['travel', 'Travel'], ['learning', 'Reading & learning'], ['routine', 'Routine & personal care'], ['exercise', 'Exercise'], ['leisure', 'Leisure'], ['personal', 'Personal time'], ['', 'Other']];
+  const DEFAULT_CATS = [
+    { id: 'cat_sleep', name: 'Sleep', short: 'Zz', color: '#7c5cd6', role: 'sleep' },
+    { id: 'cat_work', name: 'Paid work', short: 'Wk', color: '#2f9e5b', role: 'work' },
+    { id: 'cat_travel', name: 'Travel', short: 'Tr', color: '#ee8a2b', role: 'travel' },
+    { id: 'cat_learn', name: 'Reading & learning', short: 'Rd', color: '#3b7ddd', role: 'learning' },
+    { id: 'cat_routine', name: 'Morning routine & care', short: 'Rt', color: '#e7c33b', role: 'routine' },
+    { id: 'cat_exercise', name: 'Exercise', short: 'Ex', color: '#e0619b', role: 'exercise' },
+    { id: 'cat_leisure', name: 'Leisure', short: 'Ls', color: '#1fa8a0', role: 'leisure' },
+    { id: 'cat_personal', name: 'Personal time', short: 'Pe', color: '#a87556', role: 'personal' }
+  ];
+  const DEFAULT_SETTINGS = { id: 'settings', currency: 'GBP', theme: 'system', schemaVersion: SCHEMA };
+
+  // ---------------- state ----------------
+  const now = new Date();
+  const S = {
+    real: { settings: { ...DEFAULT_SETTINGS }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [] },
+    demo: null, demoOn: false,
+    ui: { tab: 'dashboard', y: now.getFullYear(), m: now.getMonth() + 1, mode: 'planned', dashRange: 'today', sumY: now.getFullYear(), sumM: now.getMonth() + 1, tip: null },
+    storage: 'loading'
+  };
+  const D = () => (S.demoOn ? S.demo : S.real);
+  const settings = () => S.real.settings;
+  const today = () => T.localToday();
+  const cat = (id) => D().categories.find((c) => c.id === id) || { id, name: 'Unknown', short: '?', color: '#888888', role: '' };
+  const job = (id) => D().jobs.find((j) => j.id === id);
+  const catIdsByRole = (role) => D().categories.filter((c) => c.role === role).map((c) => c.id);
+
+  // ---------------- utils ----------------
+  const $ = (sel, el) => (el || document).querySelector(sel);
+  const $$ = (sel, el) => [...(el || document).querySelectorAll(sel)];
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let fmtCache = {};
+  function money(x) {
+    const cur = settings().currency || 'GBP';
+    const f = fmtCache[cur] || (fmtCache[cur] = (() => { try { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (e) { return { format: (v) => cur + ' ' + v.toFixed(2) }; } })());
+    return f.format(T.round2(x || 0));
+  }
+  function curSymbol() { try { return money(0).replace(/[\d.,\s]/g, '') || settings().currency; } catch (e) { return ''; } }
+  const hrs = (min) => { const h = (min || 0) / 60; return (Math.round(h * 100) / 100).toFixed(2).replace(/\.00$/, '') + ' h'; };
+  const dur = (min) => T.fmtDur(min || 0);
+  function niceDate(d, long) {
+    const [y, m, dd] = d.split('-').map(Number);
+    return long ? WDL[T.weekday(d)] + ' ' + dd + ' ' + MON[m - 1] + ' ' + y : WD[T.weekday(d)] + ' ' + dd + ' ' + MON[m - 1].slice(0, 3);
+  }
+  function t12(t) { const m = T.parseTime(t); if (isNaN(m)) return t; return t; }
+  function inkFor(hex) {
+    const n = parseInt((hex || '#888888').slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return (1.05 / (L + 0.05)) > ((L + 0.05) / 0.05) ? '#ffffff' : '#121212';
+  }
+  function sw(c, cls) { return `<span class="sw ${cls || ''}" style="background:${esc(c.color)};color:${inkFor(c.color)}" aria-hidden="true">${esc(c.short || c.name.slice(0, 2))}</span>`; }
+  function timeRange(r) { return r.start + '–' + r.end + (r.endsNextDay ? ' (+1 day)' : ''); }
+  let toastTimer;
+  function toast(msg) {
+    let el = $('#toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.textContent = msg; el.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2800);
+  }
+
+  // ---------------- storage ----------------
+  const STORES = ['activities', 'jobs', 'categories', 'meta'];
+  const LS_KEY = 'time-and-earn-v1';
+  const Store = {
+    kind: 'memory', db: null,
+    async init() {
+      try {
+        if (!window.indexedDB) throw new Error('no idb');
+        this.db = await new Promise((res, rej) => {
+          const rq = indexedDB.open('time-and-earn', 1);
+          rq.onupgradeneeded = () => { const db = rq.result; STORES.forEach((s) => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); }); };
+          rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); rq.onblocked = () => rej(new Error('blocked'));
+          setTimeout(() => rej(new Error('timeout')), 4000);
+        });
+        this.kind = 'idb';
+      } catch (e) {
+        try { localStorage.setItem(LS_KEY + '-probe', '1'); localStorage.removeItem(LS_KEY + '-probe'); this.kind = 'ls'; } catch (e2) { this.kind = 'memory'; }
+      }
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* optional */ }
+    },
+    async loadAll() {
+      if (this.kind === 'idb') {
+        const out = {};
+        await Promise.all(STORES.map((s) => new Promise((res, rej) => { const rq = this.db.transaction(s).objectStore(s).getAll(); rq.onsuccess = () => { out[s] = rq.result; res(); }; rq.onerror = () => rej(rq.error); })));
+        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings') };
+      }
+      if (this.kind === 'ls') { try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; } }
+      return {};
+    },
+    /** ch: {activities:{put,del}, jobs:{put,del}, categories:{put,del}, settings, clear:true} */
+    async commit(ch) {
+      if (this.kind === 'idb') {
+        await new Promise((res, rej) => {
+          const tx = this.db.transaction(STORES, 'readwrite');
+          tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('aborted'));
+          if (ch.clear) STORES.forEach((s) => tx.objectStore(s).clear());
+          for (const s of ['activities', 'jobs', 'categories']) {
+            if (!ch[s]) continue;
+            (ch[s].del || []).forEach((id) => tx.objectStore(s).delete(id));
+            (ch[s].put || []).forEach((r) => tx.objectStore(s).put(r));
+          }
+          if (ch.settings) tx.objectStore('meta').put(ch.settings);
+        });
+      } else if (this.kind === 'ls') {
+        const r = S.real;
+        localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings }));
+      }
+    }
+  };
+  let writeChain = Promise.resolve();
+  /** Apply a change set to the active dataset; persist when it's the real dataset. */
+  function apply(ch, msg) {
+    const d = D();
+    for (const s of ['activities', 'jobs', 'categories']) {
+      if (!ch[s]) continue;
+      const del = new Set(ch[s].del || []);
+      const put = ch[s].put || [];
+      const putIds = new Set(put.map((r) => r.id));
+      d[s] = d[s].filter((r) => !del.has(r.id) && !putIds.has(r.id)).concat(put);
+    }
+    if (ch.settings) { S.real.settings = ch.settings; fmtCache = {}; }
+    if (!S.demoOn || (ch.settings && !ch.activities && !ch.jobs && !ch.categories)) {
+      const persistCh = S.demoOn ? { settings: ch.settings } : ch;
+      writeChain = writeChain.then(() => Store.commit(persistCh)).catch((e) => { console.error(e); toast('Could not save to this device. Export a backup soon.'); });
+    }
+    if (msg) toast(msg);
+    renderAll();
+    return writeChain;
+  }
+
+  // ---------------- theme ----------------
+  const hostTheme = document.documentElement.getAttribute('data-theme');
+  function applyTheme() {
+    const t = settings().theme;
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    else if (hostTheme) document.documentElement.setAttribute('data-theme', hostTheme);
+    else document.documentElement.removeAttribute('data-theme');
+  }
+
+  // ---------------- icons ----------------
+  const ICON = {
+    dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+    plan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h8"/></svg>',
+    sum: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+    set: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+  };
+
+  // ---------------- sheets ----------------
+  const sheets = [];
+  function openSheet(opts) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-wrap';
+    wrap.innerHTML = `<div class="scrim" data-act="closeSheet"></div><section class="sheet ${opts.full ? 'full' : ''}" role="dialog" aria-modal="true"><header class="sheet-head"><h2></h2><button class="icon-btn" data-act="closeSheet" aria-label="Close">${ICON.close}</button></header><div class="sheet-body"></div></section>`;
+    document.body.appendChild(wrap);
+    const sh = Object.assign({ wrap, body: $('.sheet-body', wrap), state: {} }, opts);
+    sh.setTitle = (t) => { $('.sheet-head h2', wrap).textContent = t; $('.sheet', wrap).setAttribute('aria-label', t); };
+    sh.setTitle(opts.title || '');
+    sheets.push(sh);
+    document.body.classList.add('locked');
+    sh.render(sh);
+    return sh;
+  }
+  function closeSheet(sh) {
+    sh = sh || sheets[sheets.length - 1];
+    if (!sh) return;
+    const i = sheets.indexOf(sh);
+    if (i >= 0) sheets.splice(i, 1);
+    sh.wrap.remove();
+    if (sh.onClose) sh.onClose();
+    if (!sheets.length) document.body.classList.remove('locked');
+  }
+  const topSheet = () => sheets[sheets.length - 1];
+  function refreshLiveSheets() { sheets.forEach((s) => { if (s.live) { const st = s.body.scrollTop; s.render(s); s.body.scrollTop = st; } }); }
+  /** In-page confirmation. buttons: [{label, val, kind}] → resolves val or null */
+  function choose(title, html, buttons) {
+    return new Promise((resolve) => {
+      let done = false;
+      openSheet({
+        title,
+        onClose: () => { if (!done) resolve(null); },
+        render(sh) {
+          sh.body.innerHTML = `<div class="prose">${html}</div><div class="btn-row" style="flex-direction:column">${buttons.map((b, i) => `<button class="btn block ${b.kind || ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div>`;
+          $$('[data-i]', sh.body).forEach((btn) => btn.addEventListener('click', () => { done = true; closeSheet(sh); resolve(buttons[+btn.dataset.i].val); }));
+        }
+      });
+    });
+  }
+
+  // ---------------- rendering: shell ----------------
+  function renderAll() {
+    applyTheme();
+    renderShell();
+    renderTab();
+    refreshLiveSheets();
+  }
+  function renderShell() {
+    $('#demoPill').hidden = !S.demoOn;
+    $$('.tab').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === S.ui.tab ? 'page' : 'false'));
+    $('#fab').hidden = S.ui.tab === 'settings';
+  }
+  function renderTab() {
+    const main = $('#main');
+    const banners = storageBanner() + (S.demoOn ? `<div class="banner warn" role="note"><div style="flex:1;min-width:200px"><strong>Demo data.</strong> These sample records are not your own, are not saved, and are never added to your totals.</div><button class="btn" data-act="demoOff">Return to my data</button></div>` : '');
+    const views = { dashboard: viewDashboard, planner: viewPlanner, summary: viewSummary, settings: viewSettings };
+    main.innerHTML = banners + views[S.ui.tab]();
+    if (S.ui.tab === 'planner') afterPlanner();
+    if (S.ui.tab === 'summary') afterSummary();
+  }
+  function storageBanner() {
+    if (S.storage === 'memory') return `<div class="banner err" role="alert"><div><strong>Not saving.</strong> This browser is blocking on-device storage (for example a private window), so anything you add will be lost when you close the page. Use a normal browser window, or export a backup from Settings before leaving.</div></div>`;
+    return '';
+  }
+
+  // ---------------- mode toggle ----------------
+  function modeSeg(mode, act) {
+    return `<div class="seg mode" role="group" aria-label="Schedule">
+      <button data-act="${act}" data-val="planned" aria-pressed="${mode === 'planned'}">Planned</button>
+      <button data-act="${act}" data-val="actual" aria-pressed="${mode === 'actual'}">Actual</button></div>`;
+  }
+  const modeHint = (mode) => mode === 'planned' ? 'Planned: your schedule and expected earnings.' : 'Actual: what you really did and recorded earnings.';
+
+  // ---------------- dashboard ----------------
+  function viewDashboard() {
+    const d = D(), td = today(), y = +td.slice(0, 4), m = +td.slice(5, 7);
+    if (!d.activities.length) {
+      return `<section class="card empty"><div class="eyebrow">${esc(niceDate(td, true))}</div><h2>Plan your first day</h2><p>Add a shift, your sleep or your commute. Time & Earn works out your hours and gross earnings as you go.</p>
+        <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="add">Add activity</button>${S.demoOn ? '' : '<button class="btn" data-act="demoOn">Try demo data</button>'}</div></section>` + dashMonthCard(y, m);
+    }
+    const P = T.dayStats(d.activities, td, 'planned'), A = T.dayStats(d.activities, td, 'actual');
+    return `<section class="card">
+      <div class="card-head"><div><div class="eyebrow">Today</div><h2>${esc(niceDate(td, true))}</h2></div><button class="btn" data-act="openDay" data-date="${td}">Open day</button></div>
+      <div class="pair">
+        <div><span class="label"><i class="key plan"></i>Planned</span><span class="big money">${money(P.earnings)}</span><span class="sub">${hrs(P.paidMin)} paid · expected</span></div>
+        <div><span class="label"><i class="key act"></i>Actual</span><span class="big money">${money(A.earnings)}</span><span class="sub">${hrs(A.paidMin)} paid · recorded</span></div>
+      </div>
+      <div class="gross-note">Gross earnings before tax and deductions.</div>
+    </section>` + dashMonthCard(y, m) + dashTimeCard(td, y, m);
+  }
+  function dashMonthCard(y, m) {
+    const d = D();
+    const P = T.monthStats(d.activities, y, m, 'planned', []).tot, A = T.monthStats(d.activities, y, m, 'actual', []).tot;
+    const pct = P.earnings > 0 ? Math.min(100, (A.earnings / P.earnings) * 100) : 0;
+    return `<section class="card">
+      <div class="card-head"><div><div class="eyebrow">This month</div><h2>${MON[m - 1]} ${y}</h2></div><button class="btn" data-act="goSummary">Summary</button></div>
+      <div class="pair">
+        <div><span class="label"><i class="key plan"></i>Expected</span><span class="big money">${money(P.earnings)}</span><span class="sub">${hrs(P.paidMin)} paid planned</span></div>
+        <div><span class="label"><i class="key act"></i>Recorded</span><span class="big money">${money(A.earnings)}</span><span class="sub">${hrs(A.paidMin)} paid so far</span></div>
+      </div>
+      ${P.earnings > 0 ? `<div><div class="meter" role="img" aria-label="Recorded is ${Math.round(pct)}% of expected"><i style="width:${pct}%"></i></div><small>${Math.round(pct)}% of expected earnings recorded</small></div>` : ''}
+      <div class="gross-note">Gross earnings before tax and deductions. Totals update as soon as you edit.</div>
+    </section>`;
+  }
+  const DASH_ROLES = [['work', 'Work'], ['sleep', 'Sleep'], ['travel', 'Travel'], ['learning', 'Learning'], ['exercise', 'Exercise'], ['leisure', 'Leisure']];
+  function dashTimeCard(td, y, m) {
+    const d = D();
+    const range = S.ui.dashRange;
+    let byCat = {}, totalWindow = 1440, allocated = 0, caption;
+    if (range === 'today') {
+      const st = T.dayStats(d.activities, td, 'actual'); byCat = st.byCat; allocated = st.allocated; caption = 'Recorded today';
+    } else {
+      const ms = T.monthStats(d.activities, y, m, 'actual', []);
+      byCat = ms.tot.byCat; allocated = ms.tot.allocated;
+      const elapsed = +td.slice(8, 10);
+      totalWindow = elapsed * 1440;
+      caption = `Recorded 1–${elapsed} ${MON[m - 1]} (${elapsed} day${elapsed > 1 ? 's' : ''} so far)`;
+    }
+    const roleMin = (role) => catIdsByRole(role).reduce((t, id) => t + (byCat[id] || 0), 0);
+    const known = new Set(DASH_ROLES.flatMap(([r]) => catIdsByRole(r)));
+    const other = Object.keys(byCat).filter((k) => !known.has(k)).reduce((t, k) => t + byCat[k], 0);
+    const unalloc = Math.max(0, totalWindow - allocated);
+    const rows = DASH_ROLES.map(([r, label]) => {
+      const c = d.categories.find((x) => x.role === r) || { color: '#888888', short: '', name: label };
+      return { label: c.name || label, min: roleMin(r), c };
+    });
+    rows.push({ label: 'Other activities', min: other, c: { color: '#8a9690', short: '··', name: 'Other' } });
+    const stack = Object.keys(byCat).map((k) => `<i style="width:${(byCat[k] / totalWindow) * 100}%;background:${esc(cat(k).color)}" title="${esc(cat(k).name)}"></i>`).join('');
+    return `<section class="card">
+      <div class="card-head"><div><div class="eyebrow">Actual time</div><h2>${range === 'today' ? 'How today went' : 'This month so far'}</h2></div></div>
+      <div class="seg" role="group" aria-label="Range"><button data-act="dashRange" data-val="today" aria-pressed="${range === 'today'}">Today</button><button data-act="dashRange" data-val="month" aria-pressed="${range === 'month'}">This month</button></div>
+      <div class="stack" role="img" aria-label="Time split">${stack}</div>
+      <div class="list">${rows.map((r) => `<div class="li">${sw(r.c)}<span class="grow">${esc(r.label)}</span><span class="val">${dur(r.min)}</span></div>`).join('')}
+        <div class="li"><span class="sw un">–</span><span class="grow">Unallocated<br><small>Time with nothing recorded. It is never counted as sleep.</small></span><span class="val">${dur(unalloc)}</span></div></div>
+      <small>${esc(caption)}.</small>
+    </section>`;
+  }
+
+  // ---------------- planner ----------------
+  function viewPlanner() {
+    const { y, m, mode } = S.ui, d = D();
+    const days = T.daysInMonth(y, m);
+    const td = today();
+    const recs = d.activities.filter((r) => r.mode === mode);
+    const ms = T.monthStats(d.activities, y, m, mode, []);
+    let hours = '';
+    for (let h = 0; h < 24; h++) hours += `<span>${T.pad(h)}</span>`;
+    const rows = ms.days.map((ds) => {
+      const date = ds.date, wd = T.weekday(date);
+      const bars = T.fragmentsForDate(recs, date).map((f) => {
+        const c = cat(f.rec.categoryId);
+        const left = (f.from / 1440) * 100, width = ((f.to - f.from) / 1440) * 100;
+        const pxw = (f.to - f.from) / 60 * 34;
+        return `<i class="bar ${mode}" style="left:${left}%;width:${width}%;--c:${esc(c.color)};--ink2:${inkFor(c.color)}" title="${esc(c.name)} ${esc(timeRange(f.rec))}">${pxw >= 20 ? `<em>${esc(pxw >= 90 ? (f.rec.name || c.name) : (c.short || ''))}</em>` : ''}</i>`;
+      }).join('');
+      const label = ds.earnings > 0 ? money(ds.earnings) : (ds.count ? dur(ds.allocated) : '');
+      return `<button class="tl-row ${date === td ? 'today' : ''} ${wd === 0 || wd === 6 ? 'weekend' : ''}" data-act="openDay" data-date="${date}" id="row-${date}" aria-label="${esc(niceDate(date, true))}${date === td ? ', today' : ''}. ${ds.count} activities${ds.earnings ? ', ' + money(ds.earnings) : ''}">
+        <span class="tl-date"><span class="wd">${WD[wd]}</span><span class="dn">${+date.slice(8)}</span><span class="de">${esc(label)}</span></span>
+        <span class="tl-track">${bars}</span></button>`;
+    }).join('');
+    const legend = d.categories.map((c) => `<span class="lg">${sw(c)}${esc(c.name)}</span>`).join('') + `<span class="lg"><span class="sw un">–</span>Unallocated</span>`;
+    return `<section class="monthbar">
+        <button class="icon-btn" data-act="month" data-val="-1" aria-label="Previous month">${ICON.left}</button>
+        <div class="mlabel"><h1>${MON[m - 1]} ${y}</h1><small>${days} days${m === 2 && T.isLeapYear(y) ? ' · leap year' : ''} · tap to pick</small>
+          <input type="month" id="monthPick" value="${y}-${T.pad(m)}" aria-label="Choose month and year" data-on="pickMonth"></div>
+        <button class="icon-btn" data-act="month" data-val="1" aria-label="Next month">${ICON.right}</button>
+      </section>
+      <div style="display:grid;gap:6px">${modeSeg(mode, 'mode')}<span class="mode-hint">${modeHint(mode)}${mode === 'planned' ? ' Striped blocks are planned.' : ''}</span></div>
+      <div class="btn-row"><button class="btn" data-act="today">Today</button><button class="btn" data-act="tools">Repeat &amp; copy</button></div>
+      <div class="legend" aria-label="Colour key">${legend}</div>
+      <section class="tl-wrap">
+        <div class="tl" id="tl"><div class="tl-grid">
+          <div class="tl-head"><div class="tl-corner">Date</div><div class="tl-hours">${hours}</div></div>
+          ${rows}
+        </div></div>
+        <div class="tl-foot"><span>${mode === 'planned' ? 'Expected' : 'Recorded'} this month: <b class="money">${money(ms.tot.earnings)}</b></span><span>${hrs(ms.tot.paidMin)} paid</span></div>
+      </section>
+      <small class="gross-note">Gross earnings before tax and deductions. Scroll sideways to see all 24 hours; tap a date to open that day.</small>`;
+  }
+  let scrolledFor = '';
+  function afterPlanner() {
+    const tl = $('#tl'); if (!tl) return;
+    const key = S.ui.y + '-' + S.ui.m;
+    if (scrolledFor !== key) {
+      scrolledFor = key;
+      const row = $('#row-' + today());
+      tl.scrollLeft = 6 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hourw') || 34);
+      if (row) tl.scrollTop = Math.max(0, row.offsetTop - 80);
+    } else if (S.ui.tlScroll) { tl.scrollLeft = S.ui.tlScroll[0]; tl.scrollTop = S.ui.tlScroll[1]; }
+    tl.addEventListener('scroll', () => { S.ui.tlScroll = [tl.scrollLeft, tl.scrollTop]; }, { passive: true });
+  }
+
+  // ---------------- day view ----------------
+  function openDay(date) {
+    openSheet({
+      full: true, live: true, title: niceDate(date, true), state: { date, mode: S.ui.mode },
+      render: renderDay
+    });
+  }
+  function renderDay(sh) {
+    const { date, mode } = sh.state;
+    const d = D();
+    sh.setTitle(niceDate(date, true) + (date === today() ? ' · Today' : ''));
+    const P = T.dayStats(d.activities, date, 'planned'), A = T.dayStats(d.activities, date, 'actual');
+    const frags = T.fragmentsForDate(d.activities.filter((r) => r.mode === mode), date);
+    const hasPlanned = d.activities.some((r) => r.mode === 'planned' && r.date === date);
+    const list = frags.length ? frags.map((f) => {
+      const r = f.rec, c = cat(r.categoryId);
+      const tot = T.recordTotals(r);
+      const piece = f.part;
+      const split = r.endsNextDay && T.span(r).e > 1440;
+      return `<button class="aitem ${f.cont ? 'cont' : ''}" data-act="edit" data-id="${esc(r.id)}">${sw(c)}
+        <span style="min-width:0"><span class="nm">${esc(r.name || c.name)}</span><br><span class="tm">${esc(timeRange(r))} · ${dur(tot.totalMin)}${f.cont ? ' · continues from ' + esc(niceDate(r.date)) : ''}${r.paid && (r.breaks || []).length ? ' · ' + dur(tot.breakMin) + ' unpaid break' : ''}${r.seriesId ? ' · repeats' : ''}</span>
+        ${r.paid && job(r.jobId) ? `<br><span class="tm">${esc(job(r.jobId).name)}</span>` : ''}</span>
+        <span class="rt">${r.paid ? money(split ? piece.earnings : tot.earnings) + `<small>${split ? 'on this date' : money(r.rate) + '/h'}</small>` : '<small>Unpaid</small>'}</span></button>`;
+    }).join('') : `<div class="card empty" style="padding:20px"><p>No ${mode} activities on this day.</p></div>`;
+
+    let hoursCol = '';
+    for (let h = 0; h <= 24; h += 2) hoursCol += `<span style="top:${(h / 24) * 100}%">${T.pad(h % 24)}:00</span>`;
+    const col = (md) => T.fragmentsForDate(d.activities.filter((r) => r.mode === md), date).map((f) => {
+      const c = cat(f.rec.categoryId), top = (f.from / 1440) * 100, h = ((f.to - f.from) / 1440) * 100, px = (f.to - f.from) / 2;
+      return `<button class="vblock ${md}" style="top:${top}%;height:${h}%;--c:${esc(c.color)};--ink2:${inkFor(c.color)}" data-act="edit" data-id="${esc(f.rec.id)}" aria-label="${esc((f.rec.name || c.name) + ' ' + timeRange(f.rec))}">${px >= 13 ? `<span>${esc(f.rec.name || c.name)}</span>` : ''}${px >= 28 ? `<span>${esc(T.fmtTime(f.from))}–${esc(f.to === 1440 ? '24:00' : T.fmtTime(f.to))}</span>` : ''}</button>`;
+    }).join('');
+
+    sh.body.innerHTML = `
+      <div class="daynav"><button class="icon-btn" data-act="dayNav" data-val="-1" aria-label="Previous day">${ICON.left}</button><span class="dt">${esc(niceDate(date))}</span><button class="icon-btn" data-act="dayNav" data-val="1" aria-label="Next day">${ICON.right}</button></div>
+      <div class="totals3">
+        <div><span class="t"><i class="key plan"></i>Planned</span><span class="v money">${money(P.earnings)}</span><span class="s">${hrs(P.paidMin)} paid</span></div>
+        <div><span class="t"><i class="key act"></i>Actual</span><span class="v money">${money(A.earnings)}</span><span class="s">${hrs(A.paidMin)} paid</span></div>
+        <div><span class="t">Unallocated</span><span class="v">${dur(A.unallocated)}</span><span class="s">actual · plan ${dur(P.unallocated)}</span></div>
+      </div>
+      <small class="gross-note">Gross earnings before tax and deductions.</small>
+      <div style="display:grid;gap:6px">${modeSeg(mode, 'dayMode')}<span class="mode-hint">${modeHint(mode)}</span></div>
+      <div class="btn-row">
+        <button class="btn primary" data-act="add" data-date="${date}" data-mode="${mode}">${ICON.plus.replace('<svg', '<svg width="18" height="18"')} Add ${mode}</button>
+        ${mode === 'actual' ? `<button class="btn" data-act="copyToActual" data-date="${date}" ${hasPlanned ? '' : 'disabled'}>Copy planned to actual</button>` : ''}
+        <button class="btn" data-act="copyDay" data-date="${date}">Copy day to…</button>
+      </div>
+      <div class="alist">${list}</div>
+      <h3 style="font-size:16px">Timeline</h3>
+      <div class="vt" aria-label="Planned and actual timeline">
+        <span></span><span class="vt-head"><i class="key plan"></i>Planned</span><span class="vt-head"><i class="key act"></i>Actual</span>
+        <div class="vt-hours">${hoursCol}</div><div class="vt-col">${col('planned')}</div><div class="vt-col">${col('actual')}</div>
+      </div>`;
+  }
+
+  // ---------------- activity editor ----------------
+  function newState(date, mode, catId) {
+    const c = catId ? cat(catId) : D().categories.find((x) => x.role === 'work') || D().categories[0];
+    const firstJob = D().jobs[0];
+    return {
+      isNew: true, id: T.uid('a_'), mode: mode || S.ui.mode, date: date || today(), categoryId: c ? c.id : '', name: '',
+      start: '09:00', end: '17:00', endsNextDay: false, paid: !!(c && c.role === 'work'),
+      jobId: c && c.role === 'work' && firstJob ? firstJob.id : '', rate: c && c.role === 'work' && firstJob ? firstJob.rate : '',
+      breaks: [], segments: [], notes: '', override: '', repeat: false, weekdays: [T.weekday(date || today())], until: '', errors: [], touchedRate: false
+    };
+  }
+  function stateFromRecord(r) {
+    return {
+      isNew: false, id: r.id, mode: r.mode, date: r.date, categoryId: r.categoryId, name: r.name || '', start: r.start, end: r.end,
+      endsNextDay: !!r.endsNextDay, paid: !!r.paid, jobId: r.jobId || '', rate: r.paid ? r.rate : '', breaks: JSON.parse(JSON.stringify(r.breaks || [])),
+      segments: JSON.parse(JSON.stringify(r.segments || [])), notes: r.notes || '', override: r.paidOverrideMin != null ? String(r.paidOverrideMin / 60) : '',
+      seriesId: r.seriesId || null, createdAt: r.createdAt, orig: r, errors: [], touchedRate: true
+    };
+  }
+  function openEditor(state) {
+    openSheet({ title: state.isNew ? 'Add activity' : 'Edit activity', state, render: renderEditor });
+  }
+  function catOptions(sel) { return D().categories.map((c) => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.short ? c.short + ' · ' : '')}${esc(c.name)}</option>`).join(''); }
+  function renderEditor(sh) {
+    const s = sh.state, d = D();
+    const errs = s.errors || [];
+    const bad = (f) => errs.some((e) => e.field === f) ? 'invalid' : '';
+    const jobsOpt = `<option value="">No job</option>` + d.jobs.map((j) => `<option value="${esc(j.id)}" ${j.id === s.jobId ? 'selected' : ''}>${esc(j.name)} · ${money(j.rate)}/h</option>`).join('');
+    const ivRows = (list, kind) => list.map((it, i) => `<div class="row3">
+        <div class="field"><label for="f-${kind}s-${i}">From</label><input type="time" id="f-${kind}s-${i}" value="${esc(it.start)}"></div>
+        <div class="field"><label for="f-${kind}e-${i}">To</label><input type="time" id="f-${kind}e-${i}" value="${esc(it.end)}"></div>
+        <button class="icon-btn" data-act="rmIv" data-kind="${kind}" data-i="${i}" aria-label="Remove">${ICON.close}</button>
+        ${kind === 'g' ? `<div class="field" style="grid-column:1/3"><label for="f-gr-${i}">Rate for this period (${esc(curSymbol())}/h)</label><input type="number" inputmode="decimal" step="0.01" min="0" id="f-gr-${i}" value="${esc(it.rate)}"></div>` : ''}
+      </div>`).join('');
+    const isSeries = !s.isNew && s.seriesId;
+    sh.body.innerHTML = `
+      ${errs.length ? `<div class="errors" role="alert"><strong>Please fix ${errs.length === 1 ? 'this' : 'these'}:</strong><ul>${errs.map((e) => `<li>${esc(e.msg)}</li>`).join('')}</ul></div>` : ''}
+      ${S.demoOn ? '<div class="banner warn">You are editing demo data. Changes are not saved.</div>' : ''}
+      <div class="field"><span class="lbl">Record as</span>${modeSeg(s.mode, 'fMode')}<span class="hint">${modeHint(s.mode)}</span></div>
+      <div class="field"><label for="f-cat">Category</label><select id="f-cat" class="${bad('category')}">${catOptions(s.categoryId)}</select></div>
+      <div class="field"><label for="f-name">Activity name <span class="muted">(optional)</span></label><input type="text" id="f-name" value="${esc(s.name)}" placeholder="${esc(cat(s.categoryId).name)}" autocomplete="off" maxlength="60"></div>
+      <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" value="${esc(s.date)}" class="${bad('date')}"></div>
+      <div class="row2">
+        <div class="field"><label for="f-start">Start</label><input type="time" id="f-start" value="${esc(s.start)}" class="${bad('start')}"></div>
+        <div class="field"><label for="f-end">End</label><input type="time" id="f-end" value="${esc(s.end)}" class="${bad('end')}"></div>
+      </div>
+      <label class="switch">Ends the following day<input type="checkbox" id="f-next" ${s.endsNextDay ? 'checked' : ''}></label>
+      <label class="switch"><span>Paid work<small>Counts towards earnings</small></span><input type="checkbox" id="f-paid" ${s.paid ? 'checked' : ''}></label>
+      ${s.paid ? `<fieldset><legend>Pay</legend>
+        <div class="field"><label for="f-job">Job</label><select id="f-job">${jobsOpt}</select>${d.jobs.length ? '' : '<span class="hint">Add jobs with default rates in Settings.</span>'}</div>
+        <div class="field"><label for="f-rate">Hourly rate for this shift (${esc(curSymbol())})</label><input type="number" inputmode="decimal" step="0.01" min="0" id="f-rate" value="${esc(s.rate)}" class="${bad('rate')}">
+          <span class="hint">Saved with this shift, so changing a job's default later won't change it.${s.jobId && job(s.jobId) && +s.rate !== job(s.jobId).rate && s.rate !== '' ? ' Job default is ' + money(job(s.jobId).rate) + '.' : ''}</span></div>
+      </fieldset>
+      <fieldset><legend>Unpaid breaks</legend>${ivRows(s.breaks, 'b')}<button class="btn" data-act="addIv" data-kind="b">Add unpaid break</button><span class="hint">Breaks are taken out of paid time.</span></fieldset>
+      <fieldset><legend>Different rates (overtime)</legend>${ivRows(s.segments, 'g')}<button class="btn" data-act="addIv" data-kind="g">Add rate period</button><span class="hint">Set a different hourly rate for part of the shift. No overtime multiplier is assumed.</span></fieldset>
+      <details ${s.override !== '' ? 'open' : ''}><summary>Paid time override (clock changes)</summary><div class="field"><label for="f-ovr">Paid hours</label><input type="number" inputmode="decimal" step="0.25" min="0" id="f-ovr" value="${esc(s.override)}" placeholder="Leave empty to calculate" class="${bad('override')}"><span class="hint">Use this for shifts that cross a clock change, or any time your paid hours differ from the clock times.</span></div></details>` : ''}
+      <div class="field"><label for="f-notes">Notes <span class="muted">(optional)</span></label><textarea id="f-notes" maxlength="500">${esc(s.notes)}</textarea></div>
+      ${s.isNew ? `<fieldset><legend>Repeat</legend>
+        <label class="switch">Repeat on selected weekdays<input type="checkbox" id="f-rep" ${s.repeat ? 'checked' : ''}></label>
+        ${s.repeat ? `<div class="chips" role="group" aria-label="Weekdays">${[1, 2, 3, 4, 5, 6, 0].map((w) => `<label class="chip"><input type="checkbox" id="f-wd-${w}" ${s.weekdays.includes(w) ? 'checked' : ''}>${WD[w]}</label>`).join('')}</div>
+          <div class="field"><label for="f-until">Repeat until</label><input type="date" id="f-until" value="${esc(s.until)}"><div class="chips"><button class="chip small" data-act="untilQuick" data-val="month">End of this month</button><button class="chip small" data-act="untilQuick" data-val="next">End of next month</button></div></div>
+          <span class="hint">You'll see the dates and any clashes before anything is added.</span>` : ''}
+      </fieldset>` : ''}
+      <div class="preview-line" id="f-preview" aria-live="polite"></div>
+      <div class="sheet-foot">
+        ${s.isNew ? '' : `<button class="btn danger" data-act="delete">Delete</button>`}
+        <button class="btn primary" data-act="save">${s.isNew ? (s.repeat ? 'Preview' : 'Save') : 'Save changes'}</button>
+      </div>
+      ${isSeries ? '<small>This activity is part of a repeating schedule. You can change just this day or this day and the following ones.</small>' : ''}`;
+    sh.rendered = { paid: s.paid, repeat: s.repeat, jobId: s.jobId, categoryId: s.categoryId };
+    sh.body.oninput = sh.body.onchange = (e) => onEditorInput(sh, e);
+    updatePreview(sh);
+  }
+  function readEditor(sh) {
+    const s = sh.state, v = (id) => { const el = $('#' + id, sh.body); return el ? el.value : undefined; }, c = (id) => { const el = $('#' + id, sh.body); return el ? el.checked : undefined; };
+    s.categoryId = v('f-cat') ?? s.categoryId; s.name = (v('f-name') ?? s.name).trim(); s.date = v('f-date') ?? s.date;
+    s.start = v('f-start') ?? s.start; s.end = v('f-end') ?? s.end; s.endsNextDay = c('f-next') ?? s.endsNextDay;
+    s.paid = c('f-paid') ?? s.paid; s.notes = v('f-notes') ?? s.notes;
+    if (s.paid) {
+      if (v('f-job') !== undefined) s.jobId = v('f-job');
+      if (v('f-rate') !== undefined) s.rate = v('f-rate');
+      if (v('f-ovr') !== undefined) s.override = v('f-ovr');
+      s.breaks = s.breaks.map((b, i) => ({ start: v('f-bs-' + i) ?? b.start, end: v('f-be-' + i) ?? b.end }));
+      s.segments = s.segments.map((g, i) => ({ start: v('f-gs-' + i) ?? g.start, end: v('f-ge-' + i) ?? g.end, rate: v('f-gr-' + i) ?? g.rate }));
+    }
+    if (s.isNew) {
+      s.repeat = c('f-rep') ?? s.repeat;
+      if (s.repeat && $('#f-wd-1', sh.body)) s.weekdays = [0, 1, 2, 3, 4, 5, 6].filter((w) => c('f-wd-' + w));
+      if (v('f-until') !== undefined) s.until = v('f-until');
+    }
+  }
+  function buildRecord(s) {
+    const num = (x) => (x === '' || x == null || isNaN(+x)) ? NaN : +x;
+    const r = {
+      id: s.id, mode: s.mode, date: s.date, start: s.start, end: s.end, endsNextDay: !!s.endsNextDay,
+      categoryId: s.categoryId, name: s.name, paid: !!s.paid, jobId: s.paid ? (s.jobId || null) : null,
+      rate: s.paid ? num(s.rate) : 0,
+      breaks: s.paid ? s.breaks.filter((b) => b.start || b.end) : [],
+      segments: s.paid ? s.segments.filter((g) => g.start || g.end || g.rate !== '').map((g) => ({ start: g.start, end: g.end, rate: num(g.rate) })) : [],
+      notes: s.notes, paidOverrideMin: s.paid && s.override !== '' && s.override != null ? Math.round(num(s.override) * 60) : null,
+      seriesId: s.seriesId || null, createdAt: s.createdAt || Date.now(), updatedAt: Date.now(), schema: SCHEMA
+    };
+    if (r.paidOverrideMin != null && isNaN(r.paidOverrideMin)) r.paidOverrideMin = -1;
+    return r;
+  }
+  function onEditorInput(sh, e) {
+    const id = e.target.id, s = sh.state;
+    const prev = sh.rendered || {};
+    readEditor(sh);
+    if (id === 'f-rate') s.touchedRate = true;
+    let rerender = false;
+    if (e.type === 'change') {
+      if (id === 'f-cat' && s.isNew && prev.categoryId !== s.categoryId) {
+        const c = cat(s.categoryId); s.paid = c.role === 'work';
+        if (s.paid && !s.jobId && D().jobs[0]) { s.jobId = D().jobs[0].id; s.rate = D().jobs[0].rate; }
+        rerender = true;
+      }
+      if (id === 'f-job' && prev.jobId !== s.jobId) { const j = job(s.jobId); if (j) { s.rate = j.rate; } rerender = true; }
+      if (id === 'f-paid' && prev.paid !== s.paid) { if (s.paid && !s.jobId && D().jobs[0]) { s.jobId = D().jobs[0].id; s.rate = D().jobs[0].rate; } rerender = true; }
+      if (id === 'f-rep' && prev.repeat !== s.repeat) { if (s.repeat && !s.until) s.until = endOfMonth(s.date); s.weekdays = s.weekdays.length ? s.weekdays : [T.weekday(s.date)]; rerender = true; }
+      if (id === 'f-date' && s.isNew && s.repeat && s.until && s.until < s.date) { s.until = endOfMonth(s.date); rerender = true; }
+      if ((id === 'f-start' || id === 'f-end') && !s.endsNextDay) {
+        const a = T.parseTime(s.start), b = T.parseTime(s.end);
+        if (!isNaN(a) && !isNaN(b) && b <= a && b !== a) { s.endsNextDay = true; rerender = true; toast('Ends the following day turned on, as the end is before the start.'); }
+      }
+    }
+    if (rerender) { const st = sh.body.scrollTop; renderEditor(sh); sh.body.scrollTop = st; } else updatePreview(sh);
+  }
+  function endOfMonth(date) { const y = +date.slice(0, 4), m = +date.slice(5, 7); return y + '-' + T.pad(m) + '-' + T.pad(T.daysInMonth(y, m)); }
+  function updatePreview(sh) {
+    const el = $('#f-preview', sh.body); if (!el) return;
+    const r = buildRecord(sh.state);
+    const v = T.validateRecord(r);
+    if (v.length) { el.innerHTML = `<span class="muted">${esc(v[0].msg)}</span>`; return; }
+    const t = T.recordTotals(r);
+    const lines = [`<b>${dur(t.totalMin)}</b> · ${esc(timeRange(r))}`];
+    if (r.paid) lines.push(`Paid ${dur(t.paidMin)}${t.breakMin ? ' (after ' + dur(t.breakMin) + ' unpaid break)' : ''} → <b>${money(t.earnings)}</b> gross`);
+    const { e } = T.span(r);
+    if (e > 1440) {
+      const p0 = T.portion(r, 0), p1 = T.portion(r, 1);
+      lines.push(`${esc(niceDate(r.date))}: ${dur(p0.min)}${r.paid ? ' · ' + money(p0.earnings) : ''} — ${esc(niceDate(T.addDays(r.date, 1)))}: ${dur(p1.min)}${r.paid ? ' · ' + money(p1.earnings) : ''}`);
+    }
+    const dst = T.dstDifference(r);
+    if (dst) lines.push(`<span style="color:var(--warn);font-weight:700">Clock change: this period is really ${dur(t.totalMin + dst)} long. Paid time uses the clock times (${dur(t.totalMin)}) unless you set an override.</span>`);
+    if (r.mode === 'actual' && r.date > today()) lines.push('<span style="color:var(--warn)">This date is in the future. Actual records count as completed work.</span>');
+    el.innerHTML = lines.map((l) => `<span>${l}</span>`).join('');
+  }
+  function conflictText(list) {
+    return list.map((c) => `${esc(cat(c.categoryId).name)}${c.name ? ' (' + esc(c.name) + ')' : ''} ${esc(timeRange(c))} on ${esc(niceDate(c.date))}`).join('; ');
+  }
+  async function saveEditor(sh) {
+    readEditor(sh);
+    const s = sh.state;
+    const rec = buildRecord(s);
+    const errs = T.validateRecord(rec);
+    if (s.isNew && s.repeat && (!s.weekdays.length)) errs.push({ field: 'repeat', msg: 'Choose at least one weekday to repeat on.' });
+    if (s.isNew && s.repeat) {
+      if (!T.isValidDate(s.until)) errs.push({ field: 'repeat', msg: 'Choose a "Repeat until" date.' });
+      else if (s.until < s.date) errs.push({ field: 'repeat', msg: '"Repeat until" must be on or after the first date.' });
+      else if (T.dayNum(s.until) - T.dayNum(s.date) > 400) errs.push({ field: 'repeat', msg: 'Repeats can cover at most about 13 months at a time.' });
+    }
+    if (errs.length) { s.errors = errs; renderEditor(sh); sh.body.scrollTop = 0; return; }
+    s.errors = [];
+    const all = D().activities;
+    // new + repeat
+    if (s.isNew && s.repeat) {
+      const dates = [...new Set([s.date].concat(T.weekdayDates(s.date, s.until, s.weekdays)))].sort();
+      const sid = T.uid('s_');
+      const adds = dates.map((dt) => T.cloneRecord(rec, { id: T.uid('a_'), date: dt, seriesId: sid }));
+      const plan = T.planBatch(adds, all, []);
+      const ok = await batchPreview('Repeat ' + (rec.name || cat(rec.categoryId).name), plan, `${esc(timeRange(rec))}, ${s.weekdays.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((w) => WD[w]).join(', ')}, from ${esc(niceDate(s.date))} to ${esc(niceDate(s.until))}.`);
+      if (ok) closeSheet(sh);
+      return;
+    }
+    // existing in a series: ask scope
+    if (!s.isNew && s.seriesId) {
+      const later = all.filter((r) => r.seriesId === s.seriesId && r.mode === s.orig.mode && r.date > s.orig.date && r.id !== s.id);
+      if (later.length) {
+        const scope = await choose('Save changes', `<p>This activity repeats on ${later.length} later date${later.length > 1 ? 's' : ''}. Which should change?</p><p class="muted">Dates stay as they are. ${s.orig.mode === 'planned' ? 'Actual records are never changed by this.' : ''}</p>`,
+          [{ label: 'Only this day', val: 'one', kind: 'primary' }, { label: `This day and the following ${later.length}`, val: 'future' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
+        if (!scope) return;
+        if (scope === 'future') {
+          const fields = ['start', 'end', 'endsNextDay', 'categoryId', 'name', 'paid', 'jobId', 'rate', 'breaks', 'segments', 'notes', 'paidOverrideMin'];
+          const updates = [rec].concat(later.map((m) => { const c = T.cloneRecord(m); fields.forEach((f) => { c[f] = JSON.parse(JSON.stringify(rec[f] === undefined ? null : rec[f])); }); c.mode = rec.mode; c.updatedAt = Date.now(); return c; }));
+          const ids = updates.map((u) => u.id);
+          const plan = T.planBatch(updates, all, ids);
+          if (plan.conflictCount) { const ok = await batchPreview('Update repeating activity', plan, 'Changes to this day and the following ones.', true); if (ok) closeSheet(sh); return; }
+          apply({ activities: { put: updates } }, `Updated ${updates.length} activities`);
+          closeSheet(sh); return;
+        }
+        rec.seriesId = s.seriesId;
+      }
+    }
+    const clashes = T.findOverlaps(rec, all);
+    if (clashes.length) {
+      s.errors = [{ field: 'start', msg: `This overlaps ${conflictText(clashes)}. Change the times, or edit that activity first. (Planned and actual records may overlap each other.)` }];
+      renderEditor(sh); sh.body.scrollTop = 0; return;
+    }
+    apply({ activities: { put: [rec] } }, s.isNew ? 'Activity added' : 'Changes saved');
+    closeSheet(sh);
+  }
+  async function deleteFromEditor(sh) {
+    const s = sh.state, all = D().activities;
+    const later = s.seriesId ? all.filter((r) => r.seriesId === s.seriesId && r.mode === s.orig.mode && r.date > s.orig.date) : [];
+    const buttons = [{ label: 'Delete this activity', val: 'one', kind: 'danger solid' }];
+    if (later.length) buttons.push({ label: `Delete this and the following ${later.length}`, val: 'future', kind: 'danger' });
+    buttons.push({ label: 'Cancel', val: null, kind: 'ghost' });
+    const v = await choose('Delete activity?', `<p>${esc(cat(s.orig.categoryId).name)} ${esc(timeRange(s.orig))} on ${esc(niceDate(s.orig.date))}.${later.length ? ' It repeats on later dates too.' : ''}</p>`, buttons);
+    if (!v) return;
+    const ids = v === 'future' ? [s.id].concat(later.map((r) => r.id)) : [s.id];
+    apply({ activities: { del: ids } }, ids.length > 1 ? `Deleted ${ids.length} activities` : 'Activity deleted');
+    closeSheet(sh);
+  }
+
+  // ---------------- batch preview ----------------
+  /** Shows dates & conflicts; resolves true if applied. */
+  function batchPreview(title, plan, descr, isEdit) {
+    return new Promise((resolve) => {
+      let done = false;
+      const items = plan.items;
+      const dates = [...new Set(items.map((i) => i.rec.date))].sort();
+      const conflictItems = items.filter((i) => i.conflicts.length || i.internal);
+      const conflictDates = new Set(conflictItems.map((i) => i.rec.date));
+      const replaceCount = new Set(conflictItems.flatMap((i) => i.conflicts.map((c) => c.id))).size;
+      const skipAdd = items.filter((i) => !i.conflicts.length && !i.internal).length;
+      openSheet({
+        title, onClose: () => { if (!done) resolve(false); },
+        render(sh) {
+          const buttons = [];
+          if (!items.length) buttons.push(`<button class="btn block" data-v="cancel">Close</button>`);
+          else if (!conflictItems.length) buttons.push(`<button class="btn primary block" data-v="skip">${isEdit ? 'Save' : 'Add'} ${items.length} ${items.length === 1 ? 'activity' : 'activities'}</button>`);
+          else {
+            buttons.push(`<button class="btn primary block" data-v="skip">Skip clashes · ${isEdit ? 'save' : 'add'} ${skipAdd}</button>`);
+            if (conflictItems.some((i) => i.conflicts.length)) buttons.push(`<button class="btn block danger" data-v="replace">Replace · remove ${replaceCount} existing</button>`);
+          }
+          if (items.length) buttons.push(`<button class="btn ghost block" data-v="cancel">Cancel</button>`);
+          sh.body.innerHTML = `${descr ? `<p class="prose" style="margin:0">${descr}</p>` : ''}
+            ${S.demoOn ? '<div class="banner warn">Demo data: changes are not saved.</div>' : ''}
+            <div><div class="eyebrow">${items.length} ${items.length === 1 ? 'activity' : 'activities'} on ${dates.length} date${dates.length === 1 ? '' : 's'}</div></div>
+            <div class="datelist">${dates.map((d) => `<span class="${conflictDates.has(d) ? 'c' : ''}">${esc(niceDate(d))}${conflictDates.has(d) ? ' · clash' : ''}</span>`).join('') || '<span>No dates match.</span>'}</div>
+            ${conflictItems.length ? `<div class="banner warn" role="alert"><div><strong>${conflictItems.length} clash${conflictItems.length === 1 ? '' : 'es'} found.</strong> Nothing has been changed yet. Choose whether to skip these dates or replace what's already there.</div></div>
+              <div style="display:grid;gap:6px">${conflictItems.slice(0, 40).map((i) => `<div class="conf"><b>${esc(niceDate(i.rec.date))}</b> ${esc(timeRange(i.rec))}: ${i.internal ? 'overlaps another activity in this same batch (it will be skipped)' : 'overlaps ' + conflictText(i.conflicts)}</div>`).join('')}${conflictItems.length > 40 ? `<small>…and ${conflictItems.length - 40} more.</small>` : ''}</div>` : ''}
+            <div style="display:grid;gap:8px">${buttons.join('')}</div>`;
+          $$('[data-v]', sh.body).forEach((b) => b.addEventListener('click', () => {
+            const v = b.dataset.v;
+            done = true; closeSheet(sh);
+            if (v === 'cancel') { resolve(false); return; }
+            const res = T.resolveBatch(plan, v);
+            if (!res.put.length && !res.del.length) { toast('Nothing to change'); resolve(true); return; }
+            apply({ activities: { put: res.put, del: res.del } }, `${isEdit ? 'Saved' : 'Added'} ${res.put.length}${res.del.length ? ', replaced ' + res.del.length : ''}`);
+            resolve(true);
+          }));
+        }
+      });
+    });
+  }
+
+  // ---------------- copy tools ----------------
+  async function copyToActual(date) {
+    if (date > today()) {
+      const go = await choose('This day hasn\'t happened yet', `<p>${esc(niceDate(date, true))} is in the future. Copying the plan into Actual will count it as completed work and recorded earnings.</p>`, [{ label: 'Copy anyway', val: true, kind: 'primary' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
+      if (!go) return;
+    }
+    const { adds } = T.copyDayRecords(D().activities, date, 'planned', [date], 'actual');
+    adds.forEach((a) => { a.seriesId = null; });
+    const plan = T.planBatch(adds, D().activities, []);
+    await batchPreview('Copy planned to actual', plan, `The planned activities for ${esc(niceDate(date, true))} will be copied into your actual record. You can edit them afterwards. Your plan is not changed.`);
+  }
+  function openCopyDay(date, mode) {
+    const y = +date.slice(0, 4), m = +date.slice(5, 7);
+    openSheet({
+      title: 'Copy a day', state: { src: date, mode: mode || S.ui.mode, y, m, sel: new Set() },
+      render(sh) {
+        const st = sh.state;
+        const srcCount = D().activities.filter((r) => r.mode === st.mode && r.date === st.src).length;
+        const first = st.y + '-' + T.pad(st.m) + '-01', lead = (T.weekday(first) + 6) % 7;
+        let cells = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((w) => `<span class="h">${w}</span>`).join('') + '<span></span>'.repeat(lead);
+        T.monthDates(st.y, st.m).forEach((d) => { cells += `<button data-d="${d}" aria-pressed="${st.sel.has(d)}" class="${d === st.src ? 'src' : ''}" ${d === st.src ? 'disabled' : ''} aria-label="${esc(niceDate(d, true))}">${+d.slice(8)}</button>`; });
+        sh.body.innerHTML = `
+          <div class="row2"><div class="field"><label for="cd-src">Copy from</label><input type="date" id="cd-src" value="${st.src}"></div>
+          <div class="field"><span class="lbl">Schedule</span>${modeSeg(st.mode, 'cdMode')}</div></div>
+          <small>${srcCount ? `${srcCount} ${st.mode} ${srcCount === 1 ? 'activity' : 'activities'} on ${esc(niceDate(st.src))}.` : `<span style="color:var(--danger)">There are no ${st.mode} activities on ${esc(niceDate(st.src))} to copy.</span>`}</small>
+          <div class="monthbar"><button class="icon-btn" data-cm="-1" aria-label="Previous month">${ICON.left}</button><h3 style="flex:1;text-align:center">${MON[st.m - 1]} ${st.y}</h3><button class="icon-btn" data-cm="1" aria-label="Next month">${ICON.right}</button></div>
+          <div class="cal" role="group" aria-label="Choose dates">${cells}</div>
+          <div class="chips"><button class="chip small" data-q="same">Same weekday, rest of month</button><button class="chip small" data-q="wk">Weekdays, rest of month</button><button class="chip small" data-q="all">Every day, rest of month</button><button class="chip small" data-q="clear">Clear</button></div>
+          <small>${st.sel.size} date${st.sel.size === 1 ? '' : 's'} selected. Copies join a repeating schedule, so you can later edit this day and the following ones together.</small>
+          <div class="sheet-foot"><button class="btn primary" data-go ${st.sel.size && srcCount ? '' : 'disabled'}>Preview copy</button></div>`;
+        $('#cd-src', sh.body).onchange = (e) => { if (T.isValidDate(e.target.value)) { st.src = e.target.value; st.sel.delete(st.src); sh.render(sh); } };
+        $$('[data-act="cdMode"]', sh.body).forEach((b) => { b.dataset.act = ''; b.onclick = () => { st.mode = b.dataset.val; sh.render(sh); }; });
+        $$('[data-d]', sh.body).forEach((b) => b.onclick = () => { const d = b.dataset.d; st.sel.has(d) ? st.sel.delete(d) : st.sel.add(d); sh.render(sh); });
+        $$('[data-cm]', sh.body).forEach((b) => b.onclick = () => { let m = st.m + +b.dataset.cm, y = st.y; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } st.m = m; st.y = y; sh.render(sh); });
+        $$('[data-q]', sh.body).forEach((b) => b.onclick = () => {
+          const q = b.dataset.q;
+          if (q === 'clear') { st.sel.clear(); sh.render(sh); return; }
+          const from = st.src >= st.y + '-' + T.pad(st.m) + '-01' ? T.addDays(st.src, 1) : st.y + '-' + T.pad(st.m) + '-01';
+          const to = st.y + '-' + T.pad(st.m) + '-' + T.pad(T.daysInMonth(st.y, st.m));
+          if (from > to) { toast('No dates left in this month after the source day.'); return; }
+          const wds = q === 'same' ? [T.weekday(st.src)] : q === 'wk' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5, 6];
+          T.weekdayDates(from, to, wds).forEach((d) => { if (d !== st.src) st.sel.add(d); });
+          sh.render(sh);
+        });
+        $('[data-go]', sh.body).onclick = async () => {
+          const { adds, seriesFor } = T.copyDayRecords(D().activities, st.src, st.mode, [...st.sel].sort(), null);
+          const plan = T.planBatch(adds, D().activities, []);
+          const ok = await batchPreview('Copy ' + niceDate(st.src), plan, `Copying ${srcCount} ${st.mode} ${srcCount === 1 ? 'activity' : 'activities'} from ${esc(niceDate(st.src, true))}.`);
+          if (ok) { linkSources(seriesFor); closeSheet(sh); }
+        };
+      }
+    });
+  }
+  /** After a copy, give source records without a series the new series id so "this and following" works. */
+  function linkSources(seriesFor) {
+    const put = [];
+    for (const id in seriesFor) { const r = D().activities.find((x) => x.id === id); if (r && !r.seriesId && D().activities.some((x) => x.seriesId === seriesFor[id])) put.push(Object.assign({}, r, { seriesId: seriesFor[id], updatedAt: Date.now() })); }
+    if (put.length) apply({ activities: { put } });
+  }
+  function mondayOf(date) { return T.addDays(date, -((T.weekday(date) + 6) % 7)); }
+  function openTools() {
+    const td = today();
+    openSheet({
+      title: 'Repeat & copy', state: { week: mondayOf(td), mode: S.ui.mode, from: T.addDays(mondayOf(td), 7), to: endOfMonth(td) },
+      render(sh) {
+        const st = sh.state;
+        const weekEnd = T.addDays(st.week, 6);
+        const n = D().activities.filter((r) => r.mode === st.mode && r.date >= st.week && r.date <= weekEnd).length;
+        const ym = st.from.slice(0, 7), y = +ym.slice(0, 4), m = +ym.slice(5);
+        sh.body.innerHTML = `
+          <section class="card"><h2>Copy one day</h2><p class="prose" style="margin:0">Copy a day's activities to another day or to several dates you pick on a calendar.</p>
+            <button class="btn" data-x="copyday">Choose a day to copy</button></section>
+          <section class="card"><h2>Repeat a weekly routine</h2>
+            <p class="prose" style="margin:0">Take one Monday–Sunday week and repeat it, day by day, across a date range or a whole month.</p>
+            <div class="field"><span class="lbl">Schedule</span>${modeSeg(st.mode, 'twMode')}</div>
+            <div class="field"><label for="tw-week">Week starting (Monday)</label><input type="date" id="tw-week" value="${st.week}"><span class="hint">${esc(niceDate(st.week))} – ${esc(niceDate(weekEnd))}: ${n} ${st.mode} ${n === 1 ? 'activity' : 'activities'}.</span></div>
+            <div class="row2"><div class="field"><label for="tw-from">Repeat from</label><input type="date" id="tw-from" value="${st.from}"></div><div class="field"><label for="tw-to">Until</label><input type="date" id="tw-to" value="${st.to}"></div></div>
+            <div class="chips"><button class="chip small" data-r="rest">Rest of ${MON[+st.week.slice(5, 7) - 1]}</button><button class="chip small" data-r="next">All of ${MON[(+st.week.slice(5, 7)) % 12]}</button></div>
+            <button class="btn primary" data-x="week" ${n ? '' : 'disabled'}>Preview</button>
+            <small>The source week itself is never changed. You'll see every date and any clashes first.</small></section>`;
+        $('[data-x="copyday"]', sh.body).onclick = () => openCopyDay(td, st.mode);
+        $$('[data-act="twMode"]', sh.body).forEach((b) => { b.dataset.act = ''; b.onclick = () => { st.mode = b.dataset.val; sh.render(sh); }; });
+        $('#tw-week', sh.body).onchange = (e) => { if (T.isValidDate(e.target.value)) { st.week = mondayOf(e.target.value); if (st.from <= T.addDays(st.week, 6)) st.from = T.addDays(st.week, 7); sh.render(sh); } };
+        $('#tw-from', sh.body).onchange = (e) => { st.from = e.target.value; };
+        $('#tw-to', sh.body).onchange = (e) => { st.to = e.target.value; };
+        $$('[data-r]', sh.body).forEach((b) => b.onclick = () => {
+          const wy = +st.week.slice(0, 4), wm = +st.week.slice(5, 7);
+          if (b.dataset.r === 'rest') { st.from = T.addDays(st.week, 7); st.to = endOfMonth(st.week); }
+          else { const ny = wm === 12 ? wy + 1 : wy, nm = wm === 12 ? 1 : wm + 1; st.from = ny + '-' + T.pad(nm) + '-01'; st.to = endOfMonth(st.from); }
+          sh.render(sh);
+        });
+        $('[data-x="week"]', sh.body).onclick = async () => {
+          if (!T.isValidDate(st.from) || !T.isValidDate(st.to) || st.to < st.from) { toast('Choose a valid date range.'); return; }
+          if (T.dayNum(st.to) - T.dayNum(st.from) > 400) { toast('Choose a range of about 13 months or less.'); return; }
+          const { adds, seriesFor } = T.repeatWeek(D().activities, st.week, st.mode, st.from, st.to);
+          const plan = T.planBatch(adds, D().activities, []);
+          const ok = await batchPreview('Repeat week', plan, `Repeating the ${st.mode} week of ${esc(niceDate(st.week))} from ${esc(niceDate(st.from))} to ${esc(niceDate(st.to))}.`);
+          if (ok) { linkSources(seriesFor); closeSheet(sh); }
+        };
+      }
+    });
+  }
+
+  // ---------------- summary ----------------
+  function viewSummary() {
+    const y = S.ui.sumY, m = S.ui.sumM, d = D();
+    const sleepIds = catIdsByRole('sleep');
+    const P = T.monthStats(d.activities, y, m, 'planned', sleepIds), A = T.monthStats(d.activities, y, m, 'actual', sleepIds);
+    const S2 = { P, A };
+    S.ui.sumData = S2;
+    const jobKeys = [...new Set(Object.keys(P.tot.byJob).concat(Object.keys(A.tot.byJob)))];
+    const jobRows = jobKeys.map((k) => `<tr><td>${esc(k === '_none' ? 'No job' : (job(k) ? job(k).name : 'Deleted job'))}</td><td class="n">${money(P.tot.byJob[k] ? P.tot.byJob[k].earnings : 0)}</td><td class="n">${money(A.tot.byJob[k] ? A.tot.byJob[k].earnings : 0)}</td><td class="n">${hrs(A.tot.byJob[k] ? A.tot.byJob[k].paidMin : 0)}</td></tr>`).join('');
+    const catKeys = d.categories.map((c) => c.id).concat(Object.keys(A.tot.byCat).concat(Object.keys(P.tot.byCat)).filter((k) => !d.categories.some((c) => c.id === k)));
+    const maxCat = Math.max(1, ...catKeys.map((k) => Math.max(A.tot.byCat[k] || 0, P.tot.byCat[k] || 0)));
+    const catBars = catKeys.filter((k) => (A.tot.byCat[k] || P.tot.byCat[k])).map((k) => { const c = cat(k); return `<div class="hbar" style="--c:${esc(c.color)}"><div class="top"><span style="display:flex;gap:8px;align-items:center">${sw(c)}${esc(c.name)}</span><b>${hrs(A.tot.byCat[k] || 0)} <small>/ plan ${hrs(P.tot.byCat[k] || 0)}</small></b></div><div class="tracks"><div class="tr" title="Actual"><i style="width:${((A.tot.byCat[k] || 0) / maxCat) * 100}%;background:var(--c)"></i></div><div class="tr" title="Planned"><i class="p" style="width:${((P.tot.byCat[k] || 0) / maxCat) * 100}%"></i></div></div></div>`; }).join('');
+    const sl = A.tot.sleep;
+    const totalDays = T.daysInMonth(y, m);
+    const empty = !P.tot.count && !A.tot.count;
+    return `<section class="monthbar">
+        <button class="icon-btn" data-act="sumMonth" data-val="-1" aria-label="Previous month">${ICON.left}</button>
+        <div class="mlabel"><h1>${MON[m - 1]} ${y}</h1><small>Monthly summary · tap to pick</small><input type="month" id="sumPick" value="${y}-${T.pad(m)}" aria-label="Choose month and year" data-on="pickSum"></div>
+        <button class="icon-btn" data-act="sumMonth" data-val="1" aria-label="Next month">${ICON.right}</button></section>
+      ${empty ? `<section class="card empty"><h2>Nothing recorded in ${MON[m - 1]}</h2><p>Add planned or actual activities and this summary fills in straight away.</p><button class="btn primary" data-act="add">Add activity</button></section>` : ''}
+      <section class="card">
+        <div class="pair">
+          <div><span class="label"><i class="key plan"></i>Planned</span><span class="big money">${money(P.tot.earnings)}</span><span class="sub">${hrs(P.tot.paidMin)} paid</span></div>
+          <div><span class="label"><i class="key act"></i>Actual</span><span class="big money">${money(A.tot.earnings)}</span><span class="sub">${hrs(A.tot.paidMin)} paid</span></div>
+        </div>
+        <div class="gross-note">Gross earnings before tax and deductions. Difference: ${money(A.tot.earnings - P.tot.earnings)} (actual minus planned).</div>
+      </section>
+      <section class="card"><div class="card-head"><h2>Daily earnings</h2><div class="legend-row"><span><i class="key plan"></i>Planned</span><span><i class="key act"></i>Actual</span></div></div>
+        <div class="chart" id="earnChart"></div><div class="tip" id="earnTip" aria-live="polite">Tap a day to see its earnings.</div></section>
+      <section class="card"><h2>Earnings by job</h2>${jobKeys.length ? `<div class="tbl-wrap"><table><thead><tr><th>Job</th><th class="n">Planned</th><th class="n">Actual</th><th class="n">Hours</th></tr></thead><tbody>${jobRows}</tbody><tfoot><tr><td>Total</td><td class="n">${money(P.tot.earnings)}</td><td class="n">${money(A.tot.earnings)}</td><td class="n">${hrs(A.tot.paidMin)}</td></tr></tfoot></table></div>` : '<p class="muted" style="margin:0">No paid work this month.</p>'}</section>
+      <section class="card"><div class="card-head"><h2>Time by activity</h2><div class="legend-row"><span><i class="key act"></i>Actual</span><span><i class="key plan"></i>Planned</span></div></div>
+        ${catBars || '<p class="muted" style="margin:0">No activities this month.</p>'}
+        <small>Unallocated actual time: ${dur(Math.max(0, totalDays * 1440 - A.tot.allocated))} across all ${totalDays} days, including days not yet reached.</small></section>
+      <section class="card"><h2>Sleep</h2>
+        ${sl.avgMin != null ? `<div class="pair"><div><span class="label">Average recorded sleep</span><span class="big">${dur(sl.avgMin)}</span><span class="sub">per day</span></div><div><span class="label">Days included</span><span class="big num">${sl.days.length}</span><span class="sub">of ${totalDays}</span></div></div>
+          <p class="prose" style="margin:0">Based only on days with actual sleep recorded: ${esc(compactDays(sl.days))} ${MON[m - 1]}. Days with no sleep record are left out, not counted as zero.</p>` : '<p class="muted" style="margin:0">No actual sleep recorded this month, so there is no average yet. Days without records are never counted as zero sleep.</p>'}</section>
+      <section class="card"><h2>Export</h2><p class="prose" style="margin:0">Download this month's planned and actual activities with totals as a CSV file for Excel, Numbers or Google Sheets.</p><button class="btn primary" data-act="csv">Export ${MON[m - 1]} as CSV</button></section>`;
+  }
+  function compactDays(dates) {
+    const n = dates.map((d) => +d.slice(8)); const out = [];
+    for (let i = 0; i < n.length; i++) { let j = i; while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++; out.push(j > i ? n[i] + '–' + n[j] : String(n[i])); i = j; }
+    return out.join(', ');
+  }
+  function afterSummary() {
+    const host = $('#earnChart'); if (!host) return;
+    const { P, A } = S.ui.sumData;
+    const n = P.days.length, W = 340, H = 170, padL = 34, padB = 20, padT = 8;
+    const max = Math.max(1, ...P.days.map((d) => d.earnings), ...A.days.map((d) => d.earnings));
+    const step = niceStep(max);
+    const top = Math.ceil(max / step) * step;
+    const cw = (W - padL) / n, bw = Math.max(2, cw * 0.7);
+    const yv = (v) => padT + (H - padT - padB) * (1 - v / top);
+    let g = '';
+    for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${padL}" x2="${W}" y1="${yv(v)}" y2="${yv(v)}"/><text class="axis" x="${padL - 4}" y="${yv(v) + 3}" text-anchor="end">${shortMoney(v)}</text>`;
+    let bars = '';
+    P.days.forEach((d, i) => {
+      const x = padL + i * cw + (cw - bw) / 2, a = A.days[i];
+      const ph = yv(0) - yv(d.earnings), ah = yv(0) - yv(a.earnings);
+      if (d.earnings > 0) bars += `<rect x="${x}" y="${yv(d.earnings)}" width="${bw}" height="${ph}" rx="1.5" fill="none" stroke="var(--plan)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+      if (a.earnings > 0) bars += `<rect x="${x + bw * 0.2}" y="${yv(a.earnings)}" width="${bw * 0.6}" height="${ah}" rx="1.5" fill="var(--accent)"/>`;
+      bars += `<rect class="hit" data-i="${i}" x="${padL + i * cw}" y="${padT}" width="${cw}" height="${H - padT}" fill="transparent"/>`;
+      if ((i + 1) % 5 === 0 || i === 0) bars += `<text class="axis" x="${padL + i * cw + cw / 2}" y="${H - 5}" text-anchor="middle">${i + 1}</text>`;
+    });
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily planned and actual gross earnings">${g}<line x1="${padL}" x2="${W}" y1="${yv(0)}" y2="${yv(0)}" stroke="var(--muted)" stroke-width="1"/>${bars}<rect id="hl" x="0" y="${padT}" width="0" height="${H - padT - padB}" fill="var(--accent)" opacity=".08" pointer-events="none"/></svg>`;
+    const tip = $('#earnTip');
+    $$('.hit', host).forEach((r) => {
+      const show = () => {
+        const i = +r.dataset.i, d = P.days[i];
+        $('#hl', host).setAttribute('x', padL + i * cw); $('#hl', host).setAttribute('width', cw);
+        tip.innerHTML = `<b>${esc(niceDate(d.date))}</b> · Planned ${money(d.earnings)} · Actual ${money(A.days[i].earnings)}`;
+      };
+      r.addEventListener('click', show); r.addEventListener('mouseenter', show);
+    });
+  }
+  function niceStep(max) { const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))); const f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
+  function shortMoney(v) { const s = curSymbol(); return v >= 1000 ? s + (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : s + Math.round(v); }
+
+  // ---------------- CSV ----------------
+  function csvCell(v) { const s = String(v == null ? '' : v); return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? '"' + (/^[=+\-@]/.test(s) ? "'" : '') + s.replace(/"/g, '""') + '"' : s; }
+  function buildCSV(y, m) {
+    const d = D(), first = y + '-' + T.pad(m) + '-01', last = endOfMonth(first);
+    const prevLast = T.addDays(first, -1);
+    const recs = d.activities.filter((r) => (r.date >= first && r.date <= last) || (r.date === prevLast && T.span(r).e > 1440))
+      .sort((a, b) => (a.mode + a.date + a.start).localeCompare(b.mode + b.date + b.start));
+    const rows = [['Mode', 'Date', 'Start', 'End', 'Ends next day', 'Category', 'Activity', 'Paid', 'Job', 'Hourly rate', 'Rate periods', 'Unpaid break (h)', 'Duration (h)', 'Paid hours', 'Gross earnings', 'Hours in this month', 'Gross in this month', 'Notes']];
+    for (const r of recs) {
+      const t = T.recordTotals(r);
+      let inMin = 0, inEarn = 0;
+      [0, 1].forEach((o) => { const dt = T.addDays(r.date, o); if (dt >= first && dt <= last) { const p = T.portion(r, o); inMin += p.min; inEarn += p.earnings; } });
+      rows.push([r.mode === 'planned' ? 'Planned' : 'Actual', r.date, r.start, r.end, r.endsNextDay ? 'Yes' : 'No', cat(r.categoryId).name, r.name || '', r.paid ? 'Yes' : 'No', r.paid && job(r.jobId) ? job(r.jobId).name : '',
+        r.paid ? r.rate.toFixed(2) : '', (r.segments || []).map((g) => `${g.start}-${g.end} @ ${g.rate}`).join('; '), (t.breakMin / 60).toFixed(2), (t.totalMin / 60).toFixed(2), (t.paidMin / 60).toFixed(2), T.round2(t.earnings).toFixed(2), (inMin / 60).toFixed(2), T.round2(inEarn).toFixed(2), r.notes || '']);
+    }
+    const sleepIds = catIdsByRole('sleep');
+    const P = T.monthStats(d.activities, y, m, 'planned', sleepIds).tot, A = T.monthStats(d.activities, y, m, 'actual', sleepIds).tot;
+    rows.push([]); rows.push(['Totals for ' + MON[m - 1] + ' ' + y + ' (gross earnings before tax and deductions; currency ' + settings().currency + ')']);
+    rows.push(['', 'Planned', 'Actual']);
+    rows.push(['Gross earnings', T.round2(P.earnings).toFixed(2), T.round2(A.earnings).toFixed(2)]);
+    rows.push(['Paid hours', (P.paidMin / 60).toFixed(2), (A.paidMin / 60).toFixed(2)]);
+    const jk = [...new Set(Object.keys(P.byJob).concat(Object.keys(A.byJob)))];
+    jk.forEach((k) => rows.push(['Earnings: ' + (k === '_none' ? 'No job' : (job(k) ? job(k).name : 'Deleted job')), T.round2(P.byJob[k] ? P.byJob[k].earnings : 0).toFixed(2), T.round2(A.byJob[k] ? A.byJob[k].earnings : 0).toFixed(2)]));
+    const ck = [...new Set(Object.keys(P.byCat).concat(Object.keys(A.byCat)))];
+    ck.forEach((k) => rows.push(['Hours: ' + cat(k).name, ((P.byCat[k] || 0) / 60).toFixed(2), ((A.byCat[k] || 0) / 60).toFixed(2)]));
+    rows.push(['Average actual sleep (h/day)', '', A.sleep.avgMin != null ? (A.sleep.avgMin / 60).toFixed(2) : 'No sleep recorded']);
+    rows.push(['Days included in sleep average', '', A.sleep.days.join(' ')]);
+    if (S.demoOn) rows.push(['DEMO DATA - not real records']);
+    return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+  }
+
+  // ---------------- downloads ----------------
+  let dlCap;
+  const dlReady = (async () => { try { dlCap = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dlCap = null; } })();
+  async function offerFile(filename, text, label) {
+    await Promise.race([dlReady, new Promise((r) => setTimeout(r, 1500))]);
+    if (dlCap) {
+      try { await dlCap.save({ filename, data: text }); toast('File ready: ' + filename); return; }
+      catch (e) { if (e && e.code === 'declined') { toast('Download cancelled'); return; } if (e && e.code === 'rate_limited') { toast('A download is already waiting for you.'); return; } }
+    } else {
+      // Outside the Claude viewer a normal download link works.
+      try {
+        if (!window.claude) {
+          const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: filename.endsWith('.csv') ? 'text/csv' : 'application/json' })); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Downloaded ' + filename); return;
+        }
+      } catch (e) { /* fall through */ }
+    }
+    openSheet({
+      title: label, render(sh) {
+        sh.body.innerHTML = `<p class="prose" style="margin:0">Downloads aren't available here. Copy the text below and paste it into a file named <code>${esc(filename)}</code>.</p><textarea id="dl-text" readonly style="min-height:220px;font-family:ui-monospace,monospace;font-size:12px">${esc(text)}</textarea><button class="btn primary" id="dl-copy">Copy to clipboard</button>`;
+        $('#dl-copy', sh.body).onclick = async () => { const ta = $('#dl-text', sh.body); try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (e) { ta.focus(); ta.select(); toast('Text selected. Use Copy.'); } };
+      }
+    });
+  }
+
+  // ---------------- settings ----------------
+  function viewSettings() {
+    const d = D(), st = settings();
+    const kind = { idb: 'Saved in this browser’s on-device database (IndexedDB).', ls: 'Saved in this browser’s local storage.', memory: 'Not saving: this browser is blocking storage.', loading: 'Checking…' }[S.storage];
+    return `<h1 style="font-size:26px">Settings</h1>
+      <section class="card"><h2>Appearance & currency</h2>
+        <div class="field"><span class="lbl">Theme</span><div class="seg" role="group" aria-label="Theme">${['system', 'light', 'dark'].map((t) => `<button data-act="theme" data-val="${t}" aria-pressed="${st.theme === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
+        <div class="field"><label for="set-cur">Currency</label><select id="set-cur" data-on="currency">${CURRENCIES.map(([c, n]) => `<option value="${c}" ${c === st.currency ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="hint">Changes the symbol only. Amounts are not converted.</span></div>
+      </section>
+      <section class="card"><div class="card-head"><h2>Jobs</h2><button class="btn" data-act="addJob">Add job</button></div>
+        ${d.jobs.length ? `<div class="list">${d.jobs.map((j) => `<button class="li" data-act="editJob" data-id="${esc(j.id)}"><span class="grow"><b>${esc(j.name)}</b></span><span class="val">${money(j.rate)}/h</span></button>`).join('')}</div>` : '<p class="muted" style="margin:0">No jobs yet. Add one to fill in its hourly rate automatically.</p>'}
+        <small>Changing a default rate only affects shifts you add afterwards. Saved shifts keep their own rate.</small></section>
+      <section class="card"><div class="card-head"><h2>Activity categories</h2><button class="btn" data-act="addCat">Add</button></div>
+        <div class="list">${d.categories.map((c) => `<button class="li" data-act="editCat" data-id="${esc(c.id)}">${sw(c)}<span class="grow"><b>${esc(c.name)}</b><br><small>${esc((ROLES.find((r) => r[0] === (c.role || '')) || ROLES[8])[1])}</small></span><span class="muted">Edit</span></button>`).join('')}
+          <div class="li"><span class="sw un">–</span><span class="grow"><b>Unallocated</b><br><small>Any time with nothing recorded</small></span></div></div></section>
+      <section class="card"><h2>Your data</h2>
+        <div class="prose"><p><b>${esc(kind)}</b></p><p>Your records stay on this device, in this browser only. They are not synced to other devices or backed up automatically. Clearing browser data, or deleting the app's website data, removes them.</p><p>Export a backup regularly and keep it somewhere safe, such as iCloud Drive.</p></div>
+        <div class="btn-row"><button class="btn primary" data-act="backup">Export backup (JSON)</button><button class="btn" data-act="restore">Restore backup</button></div>
+        <small>${S.real.activities.length} activities, ${S.real.jobs.length} jobs, ${S.real.categories.length} categories saved.</small>
+        <button class="btn danger" data-act="wipe">Delete all my data</button></section>
+      <section class="card"><h2>Demo data</h2><p class="prose" style="margin:0">Explore the app with two months of sample shifts, sleep and travel. Demo records are kept apart from yours: they are never saved and never added to your totals.</p>
+        <button class="btn" data-act="${S.demoOn ? 'demoOff' : 'demoOn'}">${S.demoOn ? 'Turn off demo data' : 'Show demo data'}</button></section>
+      <section class="card"><h2>How calculations work</h2><div class="prose">
+        <p>Gross earnings = paid hours × hourly rate, using exact minutes. Amounts are rounded to 2 decimal places only for display, so totals don't drift.</p>
+        <p>Unpaid breaks are taken out of paid time. Rate periods let part of a shift use a different rate; no overtime multiplier is assumed.</p>
+        <p>Overnight activities are split at midnight: each part counts towards its own date and month, and nothing is counted twice.</p>
+        <p>Times are local clock times. On a clock-change night, paid time is worked out from the clock times you enter (for example 22:00–06:00 is always 8 hours), even though 7 or 9 real hours pass. The editor warns you, and you can set a paid-time override for that shift.</p>
+        <p>Earnings are gross, before tax, National Insurance, pension or other deductions. Take-home pay is not calculated.</p></div></section>`;
+  }
+  function editJob(id) {
+    const j = id ? job(id) : null;
+    const used = id ? D().activities.filter((r) => r.jobId === id).length : 0;
+    openSheet({
+      title: j ? 'Edit job' : 'Add job', render(sh) {
+        sh.body.innerHTML = `<div id="jerr"></div>
+          <div class="field"><label for="j-name">Job name</label><input type="text" id="j-name" value="${esc(j ? j.name : '')}" maxlength="50" placeholder="e.g. Nursery, Weekend café"></div>
+          <div class="field"><label for="j-rate">Default hourly rate (${esc(curSymbol())})</label><input type="number" inputmode="decimal" step="0.01" min="0" id="j-rate" value="${j ? j.rate : ''}" placeholder="12.74"><span class="hint">Shifts you've already saved keep their own rate.</span></div>
+          <div class="sheet-foot">${j ? `<button class="btn danger" id="j-del">Delete</button>` : ''}<button class="btn primary" id="j-save">Save</button></div>`;
+        $('#j-save', sh.body).onclick = () => {
+          const name = $('#j-name', sh.body).value.trim(), rate = $('#j-rate', sh.body).value;
+          const errs = []; if (!name) errs.push('Enter a job name.'); if (rate === '' || isNaN(+rate) || +rate < 0) errs.push('Enter a default hourly rate of 0 or more.');
+          if (errs.length) { $('#jerr', sh.body).innerHTML = `<div class="errors" role="alert"><strong>Please fix:</strong><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`; return; }
+          apply({ jobs: { put: [{ id: j ? j.id : T.uid('j_'), name, rate: T.round2(+rate), updatedAt: Date.now() }] } }, j ? 'Job updated. Saved shifts keep their rates.' : 'Job added');
+          closeSheet(sh);
+        };
+        if (j) $('#j-del', sh.body).onclick = async () => {
+          const v = await choose('Delete job?', `<p>${esc(j.name)} is used by ${used} ${used === 1 ? 'activity' : 'activities'}. ${used ? 'They keep their saved rates and earnings, and will show as “Deleted job”.' : ''}</p>`, [{ label: 'Delete job', val: true, kind: 'danger solid' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
+          if (v) { apply({ jobs: { del: [j.id] } }, 'Job deleted'); closeSheet(sh); }
+        };
+      }
+    });
+  }
+  function editCat(id) {
+    const c = id ? cat(id) : null;
+    const used = id ? D().activities.filter((r) => r.categoryId === id).length : 0;
+    openSheet({
+      title: c ? 'Edit category' : 'Add category', render(sh) {
+        sh.body.innerHTML = `<div id="cerr"></div>
+          <div class="field"><label for="c-name">Name</label><input type="text" id="c-name" value="${esc(c ? c.name : '')}" maxlength="40"></div>
+          <div class="row2"><div class="field"><label for="c-short">Short label</label><input type="text" id="c-short" value="${esc(c ? c.short : '')}" maxlength="3" placeholder="1–3 letters"><span class="hint">Shown on timeline blocks.</span></div>
+          <div class="field"><label for="c-color">Colour</label><input type="color" id="c-color" value="${esc(c ? c.color : '#5b8def')}"></div></div>
+          <div class="field"><label for="c-role">Counts as</label><select id="c-role">${ROLES.map(([r, n]) => `<option value="${r}" ${(c ? c.role || '' : '') === r ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="hint">Used for the dashboard totals and the sleep average.</span></div>
+          <div class="field"><span class="lbl">Preview</span><span class="lg" id="c-prev" style="justify-self:start"></span></div>
+          <div class="sheet-foot">${c ? `<button class="btn danger" id="c-del">Delete</button>` : ''}<button class="btn primary" id="c-save">Save</button></div>`;
+        const prev = () => { const tmp = { name: $('#c-name', sh.body).value || 'Category', short: $('#c-short', sh.body).value, color: $('#c-color', sh.body).value }; $('#c-prev', sh.body).innerHTML = sw(tmp) + esc(tmp.name); };
+        sh.body.oninput = prev; prev();
+        $('#c-save', sh.body).onclick = () => {
+          const name = $('#c-name', sh.body).value.trim();
+          if (!name) { $('#cerr', sh.body).innerHTML = '<div class="errors" role="alert"><strong>Enter a name.</strong></div>'; return; }
+          apply({ categories: { put: [{ id: c ? c.id : T.uid('cat_'), name, short: $('#c-short', sh.body).value.trim(), color: $('#c-color', sh.body).value, role: $('#c-role', sh.body).value }] } }, 'Category saved');
+          closeSheet(sh);
+        };
+        if (c) $('#c-del', sh.body).onclick = async () => {
+          if (used) { await choose('Category in use', `<p>${esc(c.name)} is used by ${used} ${used === 1 ? 'activity' : 'activities'}. Change or delete those first, or rename this category instead.</p>`, [{ label: 'OK', val: true, kind: 'primary' }]); return; }
+          if (D().categories.length <= 1) { toast('Keep at least one category.'); return; }
+          apply({ categories: { del: [c.id] } }, 'Category deleted'); closeSheet(sh);
+        };
+      }
+    });
+  }
+  function backupJSON() {
+    const r = S.real;
+    return JSON.stringify({ app: 'time-and-earn', schemaVersion: SCHEMA, exportedAt: new Date().toISOString(), data: { settings: r.settings, jobs: r.jobs, categories: r.categories, activities: r.activities } }, null, 1);
+  }
+  function openRestore() {
+    openSheet({
+      title: 'Restore backup', render(sh) {
+        sh.body.innerHTML = `<p class="prose" style="margin:0">Choose a Time & Earn backup file (.json). You'll see what it contains before anything changes. Restoring replaces all records on this device.</p>
+          <div id="rerr"></div>
+          <div class="field"><label for="r-file">Backup file</label><input type="file" id="r-file" accept=".json,application/json,text/plain"></div>
+          <details><summary>Or paste the backup text</summary><div class="field"><textarea id="r-text" placeholder='{"app":"time-and-earn", …}' style="min-height:140px;font-family:ui-monospace,monospace;font-size:12px"></textarea><button class="btn" id="r-check">Check pasted text</button></div></details>`;
+        const handle = async (text) => {
+          let obj; try { obj = JSON.parse(text); } catch (e) { obj = null; }
+          const errs = obj ? T.validateBackup(obj) : ['The file is not valid JSON.'];
+          if (errs.length) { $('#rerr', sh.body).innerHTML = `<div class="errors" role="alert"><strong>This backup can't be restored:</strong><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`; return; }
+          const d = obj.data;
+          const v = await choose('Replace your data?', `<p>The backup${obj.exportedAt ? ' from ' + esc(new Date(obj.exportedAt).toLocaleString('en-GB')) : ''} contains <b>${d.activities.length} activities</b>, ${d.jobs.length} jobs and ${d.categories.length} categories.</p><p>This replaces the ${S.real.activities.length} activities currently saved on this device.</p>`, [{ label: 'Replace with backup', val: true, kind: 'danger solid' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
+          if (!v) return;
+          const settingsNew = Object.assign({}, DEFAULT_SETTINGS, d.settings || {}, { id: 'settings' });
+          const wasDemo = S.demoOn; S.demoOn = false;
+          S.real = { settings: settingsNew, jobs: d.jobs, categories: d.categories, activities: d.activities.map((a) => Object.assign({ breaks: [], segments: [] }, a)) };
+          fmtCache = {};
+          writeChain = writeChain.then(() => Store.commit({ clear: true, activities: { put: S.real.activities }, jobs: { put: S.real.jobs }, categories: { put: S.real.categories }, settings: settingsNew }))
+            .then(() => toast(`Restored ${d.activities.length} activities`)).catch(() => toast('Restore could not be saved on this device.'));
+          if (wasDemo) S.demo = null;
+          closeSheet(sh); renderAll();
+        };
+        $('#r-file', sh.body).onchange = (e) => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => handle(String(rd.result)); rd.onerror = () => { $('#rerr', sh.body).innerHTML = '<div class="errors">Could not read that file.</div>'; }; rd.readAsText(f); };
+        $('#r-check', sh.body).onclick = () => handle($('#r-text', sh.body).value);
+      }
+    });
+  }
+
+  // ---------------- demo dataset ----------------
+  function buildDemo() {
+    const cats = DEFAULT_CATS.map((c) => ({ ...c }));
+    const jobs = [{ id: 'demo_job1', name: 'Day job', rate: 12.74 }, { id: 'demo_job2', name: 'Weekend café', rate: 11.44 }];
+    const acts = [];
+    const td = today(), y = +td.slice(0, 4), m = +td.slice(5, 7);
+    const pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
+    const dates = T.monthDates(py, pm).concat(T.monthDates(y, m));
+    const add = (mode, date, start, end, catId, extra) => acts.push(Object.assign({ id: T.uid('demo_'), mode, date, start, end, endsNextDay: false, categoryId: catId, name: '', paid: false, jobId: null, rate: 0, breaks: [], segments: [], notes: '', paidOverrideMin: null, seriesId: null, createdAt: 0, updatedAt: 0 }, extra || {}));
+    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const shift = (t, delta) => T.fmtTime(T.parseTime(t) + delta);
+    for (const date of dates) {
+      const wd = T.weekday(date);
+      const plan = [];
+      if (wd >= 1 && wd <= 5) {
+        plan.push(['00:00', '05:00', 'cat_sleep'], ['05:00', '06:00', 'cat_learn', { name: 'Reading' }], ['06:00', '07:00', 'cat_routine'], ['07:00', '08:00', 'cat_travel'],
+          ['08:00', '17:00', 'cat_work', { paid: true, jobId: 'demo_job1', rate: 12.74, breaks: [{ start: '12:00', end: '13:00' }], name: 'Day shift' }], ['17:00', '18:00', 'cat_travel'], ['18:00', '22:00', 'cat_personal'], ['22:00', '00:00', 'cat_sleep', { endsNextDay: true }]);
+        if (wd === 2 || wd === 4) plan.splice(6, 1, ['18:00', '19:00', 'cat_exercise', { name: 'Gym' }], ['19:00', '22:00', 'cat_leisure']);
+      } else if (wd === 6) {
+        plan.push(['00:00', '08:00', 'cat_sleep'], ['08:00', '09:00', 'cat_routine'], ['09:30', '10:00', 'cat_travel'], ['10:00', '14:00', 'cat_work', { paid: true, jobId: 'demo_job2', rate: 11.44, name: 'Café shift' }], ['14:00', '14:30', 'cat_travel'], ['15:00', '18:00', 'cat_leisure'], ['23:00', '00:00', 'cat_sleep', { endsNextDay: true }]);
+      } else {
+        plan.push(['00:00', '08:30', 'cat_sleep'], ['08:30', '09:30', 'cat_routine'], ['10:00', '11:00', 'cat_exercise', { name: 'Walk' }], ['14:00', '16:00', 'cat_learn', { name: 'Study' }], ['22:00', '00:00', 'cat_sleep', { endsNextDay: true }]);
+      }
+      plan.forEach(([s, e, c, x]) => add('planned', date, s, e, c, x));
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      if (date <= td) {
+        plan.forEach(([s, e, c, x]) => {
+          if (date === td && (T.parseTime(e) || 1440) > nowMin) return;
+          if (c === 'cat_learn' && rnd() < 0.35) return;
+          let s2 = s, e2 = e;
+          if (c === 'cat_work' && rnd() < 0.3) { e2 = shift(e, 30); }
+          if (c === 'cat_personal' && rnd() < 0.3) e2 = '21:30';
+          add('actual', date, s2, e2, c, x);
+        });
+        // matching travel after a late finish
+      }
+    }
+    // fix overlaps created by overtime: drop actual records that now overlap
+    const clean = [];
+    for (const r of acts) { if (!T.findOverlaps(r, clean).length) clean.push(r); }
+    return { settings: S.real.settings, jobs, categories: cats, activities: clean };
+  }
+
+  // ---------------- events ----------------
+  const H = {
+    tab: (el) => { S.ui.tab = el.dataset.tab; renderAll(); window.scrollTo(0, 0); },
+    add: (el) => openEditor(newState(el.dataset.date || (S.ui.tab === 'planner' && (S.ui.y !== +today().slice(0, 4) || S.ui.m !== +today().slice(5, 7)) ? S.ui.y + '-' + T.pad(S.ui.m) + '-01' : today()), el.dataset.mode || S.ui.mode)),
+    openDay: (el) => openDay(el.dataset.date),
+    closeSheet: () => closeSheet(),
+    mode: (el) => { S.ui.mode = el.dataset.val; renderAll(); },
+    month: (el) => { let m = S.ui.m + +el.dataset.val, y = S.ui.y; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } S.ui.m = m; S.ui.y = y; renderAll(); },
+    today: () => { const td = today(); S.ui.y = +td.slice(0, 4); S.ui.m = +td.slice(5, 7); scrolledFor = ''; renderAll(); },
+    sumMonth: (el) => { let m = S.ui.sumM + +el.dataset.val, y = S.ui.sumY; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } S.ui.sumM = m; S.ui.sumY = y; renderAll(); },
+    goSummary: () => { const td = today(); S.ui.sumY = +td.slice(0, 4); S.ui.sumM = +td.slice(5, 7); S.ui.tab = 'summary'; renderAll(); window.scrollTo(0, 0); },
+    dashRange: (el) => { S.ui.dashRange = el.dataset.val; renderAll(); },
+    tools: () => openTools(),
+    dayNav: (el) => { const sh = topSheet(); sh.state.date = T.addDays(sh.state.date, +el.dataset.val); sh.render(sh); },
+    dayMode: (el) => { const sh = topSheet(); sh.state.mode = el.dataset.val; S.ui.mode = el.dataset.val; renderTab(); sh.render(sh); },
+    edit: (el) => { const r = D().activities.find((x) => x.id === el.dataset.id); if (r) openEditor(stateFromRecord(r)); },
+    fMode: (el) => { const sh = topSheet(); readEditor(sh); sh.state.mode = el.dataset.val; renderEditor(sh); },
+    addIv: (el) => { const sh = topSheet(); readEditor(sh); const s = sh.state; if (el.dataset.kind === 'b') s.breaks.push({ start: '12:00', end: '12:30' }); else s.segments.push({ start: s.end && !isNaN(T.parseTime(s.end)) ? T.fmtTime(T.parseTime(s.end) - 60) : '', end: s.end, rate: s.rate }); const st = sh.body.scrollTop; renderEditor(sh); sh.body.scrollTop = st; },
+    rmIv: (el) => { const sh = topSheet(); readEditor(sh); (el.dataset.kind === 'b' ? sh.state.breaks : sh.state.segments).splice(+el.dataset.i, 1); const st = sh.body.scrollTop; renderEditor(sh); sh.body.scrollTop = st; },
+    untilQuick: (el) => { const sh = topSheet(); readEditor(sh); const s = sh.state; if (el.dataset.val === 'month') s.until = endOfMonth(s.date); else { const y = +s.date.slice(0, 4), m = +s.date.slice(5, 7); s.until = endOfMonth((m === 12 ? y + 1 : y) + '-' + T.pad(m === 12 ? 1 : m + 1) + '-01'); } renderEditor(sh); },
+    save: () => saveEditor(topSheet()),
+    delete: () => deleteFromEditor(topSheet()),
+    copyToActual: (el) => copyToActual(el.dataset.date),
+    copyDay: (el) => openCopyDay(el.dataset.date, topSheet() && topSheet().state.mode),
+    csv: () => { const y = S.ui.sumY, m = S.ui.sumM; offerFile(`time-and-earn-${y}-${T.pad(m)}${S.demoOn ? '-demo' : ''}.csv`, buildCSV(y, m), 'Export CSV'); },
+    backup: () => offerFile(`time-and-earn-backup-${today()}.json`, backupJSON(), 'Backup'),
+    restore: () => openRestore(),
+    wipe: async () => {
+      const v = await choose('Delete all your data?', `<p>This removes all ${S.real.activities.length} activities, your jobs and your category changes from this device. It can't be undone. Export a backup first if you might need them.</p>`, [{ label: 'Delete everything', val: true, kind: 'danger solid' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
+      if (!v) return;
+      S.real = { settings: { ...S.real.settings }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [] };
+      writeChain = writeChain.then(() => Store.commit({ clear: true, categories: { put: S.real.categories }, settings: S.real.settings }));
+      toast('All data deleted'); renderAll();
+    },
+    theme: (el) => apply({ settings: Object.assign({}, settings(), { theme: el.dataset.val }) }),
+    addJob: () => editJob(null), editJob: (el) => editJob(el.dataset.id),
+    addCat: () => editCat(null), editCat: (el) => editCat(el.dataset.id),
+    demoOn: () => { S.demo = S.demo || buildDemo(); S.demoOn = true; toast('Showing demo data'); renderAll(); },
+    demoOff: () => { S.demoOn = false; toast('Back to your data'); renderAll(); }
+  };
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el || !el.dataset.act || el.disabled) return;
+    const fn = H[el.dataset.act];
+    if (fn) { e.preventDefault(); fn(el, e); }
+  });
+  document.addEventListener('change', (e) => {
+    const on = e.target.dataset && e.target.dataset.on;
+    if (on === 'pickMonth' && e.target.value) { const [y, m] = e.target.value.split('-').map(Number); S.ui.y = y; S.ui.m = m; renderAll(); }
+    if (on === 'pickSum' && e.target.value) { const [y, m] = e.target.value.split('-').map(Number); S.ui.sumY = y; S.ui.sumM = m; renderAll(); }
+    if (on === 'currency') apply({ settings: Object.assign({}, settings(), { currency: e.target.value }) }, 'Currency updated');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheets.length) closeSheet(); });
+  // refresh "today" when the app comes back to the foreground
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheets.length) renderAll(); });
+
+  // ---------------- boot ----------------
+  async function boot() {
+    renderShell();
+    await Store.init();
+    S.storage = Store.kind;
+    try {
+      const data = await Store.loadAll();
+      if (data.settings) S.real.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+      if (Array.isArray(data.jobs)) S.real.jobs = data.jobs;
+      if (Array.isArray(data.categories) && data.categories.length) S.real.categories = data.categories;
+      if (Array.isArray(data.activities)) S.real.activities = data.activities;
+      if (!(Array.isArray(data.categories) && data.categories.length) && Store.kind !== 'memory') Store.commit({ categories: { put: S.real.categories }, settings: S.real.settings }).catch(() => {});
+    } catch (e) { console.error(e); toast('Could not read saved data.'); }
+    renderAll();
+  }
+  window.__TE_APP = { S, Store, apply, buildCSV, backupJSON };
+  boot();
+})();
+
+</script>
+
+</body>
+</html>
