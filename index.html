@@ -310,17 +310,28 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
 .hist-row-val { text-align: right; display: grid; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hist-row-val small { color: var(--muted); }
 
+/* Stage C: navigation and Today additions */
+.icon-btn { background: none; border: 0; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; color: var(--muted); padding: 0; flex: none; }
+.icon-btn svg { width: 24px; height: 24px; }
+.icon-btn[aria-current="page"], .icon-btn:focus-visible { color: var(--accent); }
+.now-next .nn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.now-next .nn-grid > div { background: var(--surface-2); border-radius: 12px; padding: 12px; display: grid; gap: 4px; min-width: 0; }
+.now-next .label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.now-next .nn-name { font-weight: 700; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
+.now-next small { color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 360px) { .now-next .nn-grid { grid-template-columns: 1fr; } }
+
 </style>
 </head>
 <body>
-<header class="topbar"><div class="topbar-in"><span class="brand">Time <b>&amp;</b> Earn</span><span class="spacer"></span><span class="demo-pill" id="demoPill" hidden>Demo data</span></div></header>
+<header class="topbar"><div class="topbar-in"><span class="brand">Time <b>&amp;</b> Earn</span><span class="spacer"></span><span class="demo-pill" id="demoPill" hidden>Demo data</span><button class="icon-btn" data-act="tab" data-tab="settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button></div></header>
 <main id="main" aria-live="polite"><section class="card empty"><h2>Loading your schedule…</h2></section></main>
 <button class="fab" id="fab" data-act="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add activity</button>
 <nav class="tabbar" aria-label="Main"><div class="tabbar-in">
-  <button class="tab" data-act="tab" data-tab="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
-  <button class="tab" data-act="tab" data-tab="planner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h8"/></svg>Planner</button>
-  <button class="tab" data-act="tab" data-tab="summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Summary</button>
-  <button class="tab" data-act="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</button>
+  <button class="tab" data-act="tab" data-tab="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today</button>
+  <button class="tab" data-act="tab" data-tab="planner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h8"/></svg>Calendar</button>
+  <button class="tab" data-act="tab" data-tab="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>Goals</button>
+  <button class="tab" data-act="tab" data-tab="summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Insights</button>
 </div></nav>
 <script>
 /* Time & Earn — calculation core (pure functions, no DOM).
@@ -915,7 +926,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
 (function () {
   'use strict';
   const T = window.TE;
-  const SCHEMA = 3; // 2: pay cycles + payment records; 3: saved pay-period history per job
+  const SCHEMA = 4; // 2: pay cycles + payment records; 3: saved pay-period history per job; 4: safety copy kept before upgrades
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -986,6 +997,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   // ---------------- storage ----------------
   const STORES = ['activities', 'jobs', 'categories', 'meta'];
   const LS_KEY = 'time-and-earn-v1';
+  const SAFETY_ID = 'preUpgradeBackup'; // one copy of the data as it was before the first upgrade to this schema
   const Store = {
     kind: 'memory', db: null,
     async init() {
@@ -1007,9 +1019,9 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (this.kind === 'idb') {
         const out = {};
         await Promise.all(STORES.map((s) => new Promise((res, rej) => { const rq = this.db.transaction(s).objectStore(s).getAll(); rq.onsuccess = () => { out[s] = rq.result; res(); }; rq.onerror = () => rej(rq.error); })));
-        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings'), payments: (out.meta || []).find((x) => x.id === 'payments') };
+        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings'), payments: (out.meta || []).find((x) => x.id === 'payments'), backup: (out.meta || []).find((x) => x.id === SAFETY_ID) };
       }
-      if (this.kind === 'ls') { try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; } }
+      if (this.kind === 'ls') { try { const raw = localStorage.getItem(LS_KEY); const out = raw ? JSON.parse(raw) : {}; const sf = localStorage.getItem(LS_KEY + '-safety'); if (sf) out.backup = JSON.parse(sf); return out; } catch (e) { return {}; } }
       return {};
     },
     /** ch: {activities:{put,del}, jobs:{put,del}, categories:{put,del}, settings, clear:true} */
@@ -1026,10 +1038,12 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
           }
           if (ch.settings) tx.objectStore('meta').put(ch.settings);
           if (ch.payments) tx.objectStore('meta').put(ch.payments);
+          if (ch.backup) tx.objectStore('meta').put(ch.backup);
         });
       } else if (this.kind === 'ls') {
         const r = S.real;
         localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings, payments: r.payments }));
+        if (ch.backup) localStorage.setItem(LS_KEY + '-safety', JSON.stringify(ch.backup));
       }
     }
   };
@@ -1132,7 +1146,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   function renderTab() {
     const main = $('#main');
     const banners = storageBanner() + (S.demoOn ? `<div class="banner warn" role="note"><div style="flex:1;min-width:200px"><strong>Demo data.</strong> These sample records are not your own, are not saved, and are never added to your totals.</div><button class="btn" data-act="demoOff">Return to my data</button></div>` : '');
-    const views = { dashboard: viewDashboard, planner: viewPlanner, summary: viewSummary, settings: viewSettings };
+    const views = { dashboard: viewDashboard, planner: viewPlanner, goals: viewGoals, summary: viewSummary, settings: viewSettings };
     main.innerHTML = banners + views[S.ui.tab]();
     if (S.ui.tab === 'planner') afterPlanner();
     if (S.ui.tab === 'summary') afterSummary();
@@ -1158,7 +1172,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
         <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="add">Add activity</button>${S.demoOn ? '' : '<button class="btn" data-act="demoOn">Try demo data</button>'}</div></section>` + incomeSection(y, m);
     }
     const P = T.dayStats(d.activities, td, 'planned'), A = T.dayStats(d.activities, td, 'actual');
-    return `<section class="card">
+    return nowNextCard(td) + `<section class="card">
       <div class="card-head"><div><div class="eyebrow">Today</div><h2>${esc(niceDate(td, true))}</h2></div><button class="btn" data-act="openDay" data-date="${td}">Open day</button></div>
       <div class="pair">
         <div><span class="label"><i class="key plan"></i>Planned</span><span class="big money">${money(P.earnings)}</span><span class="sub">${hrs(P.paidMin)} paid · expected</span></div>
@@ -1166,6 +1180,30 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       </div>
       <div class="gross-note">Gross earnings before tax and deductions.</div>
     </section>` + incomeSection(y, m) + dashTimeCard(td, y, m);
+  }
+  /** Current and next activity for today, from the actual times if any are recorded, otherwise the planned times. Uses the clock each time it renders. */
+  function nowNextCard(td) {
+    const d = D();
+    const src = d.activities.some((r) => r.date === td && r.mode === 'actual') ? 'actual' : 'planned';
+    const list = d.activities.filter((r) => r.date === td && r.mode === src).map((r) => {
+      const s = T.parseTime(r.start); let e = T.parseTime(r.end);
+      if (r.endsNextDay) e += 1440;
+      return { r, s, e };
+    }).filter((x) => !isNaN(x.s) && !isNaN(x.e) && x.e > x.s).sort((a, b) => a.s - b.s);
+    if (!list.length) return '';
+    const nowD = new Date(), nm = nowD.getHours() * 60 + nowD.getMinutes();
+    const cur = list.find((x) => x.s <= nm && nm < x.e), nxt = list.find((x) => x.s > nm);
+    const name = (x) => esc(x.r.name || cat(x.r.categoryId).name);
+    const curHtml = cur ? `<span class="nn-name">${sw(cat(cur.r.categoryId), 'sm')} ${name(cur)}</span><small>${esc(timeRange(cur.r))}</small>` : '<span class="nn-name">Nothing scheduled right now</span><small>Time between activities is not counted as anything.</small>';
+    const nxtHtml = nxt ? `<span class="nn-name">${sw(cat(nxt.r.categoryId), 'sm')} ${name(nxt)}</span><small>${esc(timeRange(nxt.r))}</small>` : '<span class="nn-name">Nothing else today</span><small>You have no more activities after this time.</small>';
+    return `<section class="card now-next" aria-label="Now and next">
+      <div class="card-head"><div><div class="eyebrow">${src === 'actual' ? 'Recorded times' : 'Planned times'}</div><h2>Now and next</h2></div></div>
+      <div class="nn-grid"><div><span class="label">Now</span>${curHtml}</div><div><span class="label">Next</span>${nxtHtml}</div></div>
+    </section>`;
+  }
+  function viewGoals() {
+    return `<section class="card empty"><div class="eyebrow">Goals</div><h2>Time to Goal is coming next</h2>
+      <p>You'll be able to set a goal such as headphones or a holiday, see what you've saved, and how many paid hours are left at your rate. Nothing is saved or counted here yet.</p></section>`;
   }
   function dashMonthCard(y, m) {
     const d = D();
@@ -2432,6 +2470,21 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheets.length) { try { syncHistory(false); } catch (e) { /* history sync is best effort */ } renderAll(); } });
 
   // ---------------- boot ----------------
+  /** Before the data is changed by a newer version, keep one untouched copy of it. Repeat-safe: an existing copy is never overwritten. */
+  async function upgradeSchema(data) {
+    const hasData = (data.activities || []).length || (data.jobs || []).length;
+    const from = (data.settings && data.settings.schemaVersion) || (hasData ? 1 : SCHEMA);
+    if (from >= SCHEMA || Store.kind === 'memory') return;
+    if (!data.backup) {
+      const copy = JSON.parse(JSON.stringify({ settings: data.settings || null, jobs: data.jobs || [], categories: data.categories || [], activities: data.activities || [], payments: data.payments || null }));
+      const safety = { id: SAFETY_ID, createdAt: new Date().toISOString(), fromSchema: from, toSchema: SCHEMA, data: copy };
+      try { await Store.commit({ backup: safety }); }
+      catch (e) { console.error(e); toast('Upgrade paused: could not save a safety copy.'); return; }
+      data.backup = safety;
+    }
+    S.real.settings = Object.assign({}, S.real.settings, { schemaVersion: SCHEMA });
+    try { await Store.commit({ settings: S.real.settings }); } catch (e) { console.error(e); }
+  }
   async function boot() {
     renderShell();
     await Store.init();
@@ -2443,6 +2496,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (Array.isArray(data.categories) && data.categories.length) S.real.categories = data.categories;
       if (Array.isArray(data.activities)) S.real.activities = data.activities;
       if (data.payments && data.payments.records && typeof data.payments.records === 'object') S.real.payments = { id: 'payments', records: data.payments.records };
+      await upgradeSchema(data);
       S.needsSync = true;
       if (!(Array.isArray(data.categories) && data.categories.length) && Store.kind !== 'memory') Store.commit({ categories: { put: S.real.categories }, settings: S.real.settings }).catch(() => {});
     } catch (e) { console.error(e); toast('Could not read saved data.'); }
