@@ -321,6 +321,15 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
 .now-next small { color: var(--muted); font-variant-numeric: tabular-nums; }
 @media (max-width: 360px) { .now-next .nn-grid { grid-template-columns: 1fr; } }
 
+/* Stage D: live tracking and goals */
+.bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+.goal { display: grid; gap: 10px; }
+.goal-line { margin: 0; font-weight: 600; }
+.goal-note { margin: 0; color: var(--muted); font-size: 13px; }
+.track .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
 </style>
 </head>
 <body>
@@ -926,7 +935,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
 (function () {
   'use strict';
   const T = window.TE;
-  const SCHEMA = 4; // 2: pay cycles + payment records; 3: saved pay-period history per job; 4: safety copy kept before upgrades
+  const SCHEMA = 5; // 2: pay cycles + payment records; 3: saved pay-period history per job; 4: safety copy kept before upgrades; 5: goals and live tracking (additive)
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -948,7 +957,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   // ---------------- state ----------------
   const now = new Date();
   const S = {
-    real: { settings: { ...DEFAULT_SETTINGS }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments() },
+    real: { settings: { ...DEFAULT_SETTINGS }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments(), goals: [], tracking: null },
     demo: null, demoOn: false,
     ui: { tab: 'dashboard', y: now.getFullYear(), m: now.getMonth() + 1, mode: 'planned', dashRange: 'today', sumY: now.getFullYear(), sumM: now.getMonth() + 1, tip: null, payGroup: null, payAnchor: null },
     storage: 'loading'
@@ -1019,7 +1028,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (this.kind === 'idb') {
         const out = {};
         await Promise.all(STORES.map((s) => new Promise((res, rej) => { const rq = this.db.transaction(s).objectStore(s).getAll(); rq.onsuccess = () => { out[s] = rq.result; res(); }; rq.onerror = () => rej(rq.error); })));
-        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings'), payments: (out.meta || []).find((x) => x.id === 'payments'), backup: (out.meta || []).find((x) => x.id === SAFETY_ID) };
+        return { activities: out.activities, jobs: out.jobs, categories: out.categories, settings: (out.meta || []).find((x) => x.id === 'settings'), payments: (out.meta || []).find((x) => x.id === 'payments'), backup: (out.meta || []).find((x) => x.id === SAFETY_ID), goals: ((out.meta || []).find((x) => x.id === 'goals') || {}).items || null, tracking: ((out.meta || []).find((x) => x.id === 'tracking') || {}).session || null };
       }
       if (this.kind === 'ls') { try { const raw = localStorage.getItem(LS_KEY); const out = raw ? JSON.parse(raw) : {}; const sf = localStorage.getItem(LS_KEY + '-safety'); if (sf) out.backup = JSON.parse(sf); return out; } catch (e) { return {}; } }
       return {};
@@ -1039,10 +1048,12 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
           if (ch.settings) tx.objectStore('meta').put(ch.settings);
           if (ch.payments) tx.objectStore('meta').put(ch.payments);
           if (ch.backup) tx.objectStore('meta').put(ch.backup);
+          if (ch.goals !== undefined) tx.objectStore('meta').put({ id: 'goals', items: ch.goals });
+          if (ch.tracking !== undefined) tx.objectStore('meta').put({ id: 'tracking', session: ch.tracking });
         });
       } else if (this.kind === 'ls') {
         const r = S.real;
-        localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings, payments: r.payments }));
+        localStorage.setItem(LS_KEY, JSON.stringify({ activities: r.activities, jobs: r.jobs, categories: r.categories, settings: r.settings, payments: r.payments, goals: r.goals, tracking: r.tracking }));
         if (ch.backup) localStorage.setItem(LS_KEY + '-safety', JSON.stringify(ch.backup));
       }
     }
@@ -1060,6 +1071,8 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     }
     if (ch.settings) { S.real.settings = ch.settings; fmtCache = {}; }
     if (ch.payments) d.payments = ch.payments;
+    if (ch.goals !== undefined) S.real.goals = ch.goals;
+    if (ch.tracking !== undefined) S.real.tracking = ch.tracking;
     if (!S.demoOn || (ch.settings && !ch.activities && !ch.jobs && !ch.categories && !ch.payments)) {
       const persistCh = S.demoOn ? { settings: ch.settings } : ch;
       writeChain = writeChain.then(() => Store.commit(persistCh)).catch((e) => { console.error(e); toast('Could not save to this device. Export a backup soon.'); });
@@ -1168,11 +1181,11 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   function viewDashboard() {
     const d = D(), td = today(), y = +td.slice(0, 4), m = +td.slice(5, 7);
     if (!d.activities.length) {
-      return `<section class="card empty"><div class="eyebrow">${esc(niceDate(td, true))}</div><h2>Plan your first day</h2><p>Add a shift, your sleep or your commute. Time & Earn works out your hours and gross earnings as you go.</p>
+      return trackCard() + `<section class="card empty"><div class="eyebrow">${esc(niceDate(td, true))}</div><h2>Plan your first day</h2><p>Add a shift, your sleep or your commute. Time & Earn works out your hours and gross earnings as you go.</p>
         <div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="add">Add activity</button>${S.demoOn ? '' : '<button class="btn" data-act="demoOn">Try demo data</button>'}</div></section>` + incomeSection(y, m);
     }
     const P = T.dayStats(d.activities, td, 'planned'), A = T.dayStats(d.activities, td, 'actual');
-    return nowNextCard(td) + `<section class="card">
+    return trackCard() + goalStrip() + nowNextCard(td) + `<section class="card">
       <div class="card-head"><div><div class="eyebrow">Today</div><h2>${esc(niceDate(td, true))}</h2></div><button class="btn" data-act="openDay" data-date="${td}">Open day</button></div>
       <div class="pair">
         <div><span class="label"><i class="key plan"></i>Planned</span><span class="big money">${money(P.earnings)}</span><span class="sub">${hrs(P.paidMin)} paid · expected</span></div>
@@ -1202,8 +1215,9 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     </section>`;
   }
   function viewGoals() {
-    return `<section class="card empty"><div class="eyebrow">Goals</div><h2>Time to Goal is coming next</h2>
-      <p>You'll be able to set a goal such as headphones or a holiday, see what you've saved, and how many paid hours are left at your rate. Nothing is saved or counted here yet.</p></section>`;
+    const goals = S.real.goals;
+    if (!goals.length) return `<section class="card empty"><div class="eyebrow">Goals</div><h2>Set a goal</h2><p>Save up for headphones, a holiday or a course. See what you have saved and how many paid hours are left at your rate.</p><div class="btn-row" style="justify-content:center"><button class="btn primary" data-act="goalAdd">Add a goal</button></div></section>`;
+    return `<div class="btn-row" style="justify-content:flex-end"><button class="btn primary" data-act="goalAdd">Add a goal</button></div>` + goals.map((g) => goalCard(g)).join('');
   }
   function dashMonthCard(y, m) {
     const d = D();
@@ -2326,7 +2340,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   }
   function backupJSON() {
     const r = S.real;
-    return JSON.stringify({ app: 'time-and-earn', schemaVersion: SCHEMA, exportedAt: new Date().toISOString(), data: { settings: r.settings, jobs: r.jobs, categories: r.categories, activities: r.activities, payments: r.payments } }, null, 1);
+    return JSON.stringify({ app: 'time-and-earn', schemaVersion: SCHEMA, exportedAt: new Date().toISOString(), data: { settings: r.settings, jobs: r.jobs, categories: r.categories, activities: r.activities, payments: r.payments, goals: r.goals || [] } }, null, 1);
   }
   function openRestore() {
     openSheet({
@@ -2345,9 +2359,9 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
           const settingsNew = Object.assign({}, DEFAULT_SETTINGS, d.settings || {}, { id: 'settings' });
           const wasDemo = S.demoOn; S.demoOn = false;
           const paymentsNew = { id: 'payments', records: (d.payments && d.payments.records) || {} };
-          S.real = { settings: settingsNew, jobs: d.jobs, categories: d.categories, activities: d.activities.map((a) => Object.assign({ breaks: [], segments: [] }, a)), payments: paymentsNew };
+          S.real = { settings: settingsNew, jobs: d.jobs, categories: d.categories, activities: d.activities.map((a) => Object.assign({ breaks: [], segments: [] }, a)), payments: paymentsNew, goals: cleanGoals(d.goals), tracking: null };
           fmtCache = {};
-          writeChain = writeChain.then(() => Store.commit({ clear: true, activities: { put: S.real.activities }, jobs: { put: S.real.jobs }, categories: { put: S.real.categories }, settings: settingsNew, payments: paymentsNew }))
+          writeChain = writeChain.then(() => Store.commit({ clear: true, activities: { put: S.real.activities }, jobs: { put: S.real.jobs }, categories: { put: S.real.categories }, settings: settingsNew, payments: paymentsNew, goals: S.real.goals }))
             .then(() => toast(`Restored ${d.activities.length} activities`)).catch(() => toast('Restore could not be saved on this device.'));
           if (wasDemo) S.demo = null;
           closeSheet(sh); renderAll();
@@ -2431,7 +2445,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     wipe: async () => {
       const v = await choose('Delete all your data?', `<p>This removes all ${S.real.activities.length} activities, your jobs and your category changes from this device. It can't be undone. Export a backup first if you might need them.</p>`, [{ label: 'Delete everything', val: true, kind: 'danger solid' }, { label: 'Cancel', val: null, kind: 'ghost' }]);
       if (!v) return;
-      S.real = { settings: { ...S.real.settings }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments() };
+      S.real = { settings: { ...S.real.settings }, jobs: [], categories: DEFAULT_CATS.map((c) => ({ ...c })), activities: [], payments: emptyPayments(), goals: [], tracking: null };
       writeChain = writeChain.then(() => Store.commit({ clear: true, categories: { put: S.real.categories }, settings: S.real.settings, payments: S.real.payments }));
       toast('All data deleted'); renderAll();
     },
@@ -2451,7 +2465,9 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     payCsv: () => { const g = payGroups().find((x) => x.key === S.ui.payGroup); if (!g) return; const per = selectedPeriod(g).per; if (!per) return; offerFile(`time-and-earn-pay-${per.start}-to-${per.end}${S.demoOn ? '-demo' : ''}.csv`, buildPeriodCSV(g, per), 'Export CSV'); },
     goSettings: () => { S.ui.tab = 'settings'; renderAll(); window.scrollTo(0, 0); },
     demoOn: () => { S.demo = S.demo || buildDemo(); S.demoOn = true; toast('Showing demo data'); renderAll(); },
-    demoOff: () => { S.demoOn = false; toast('Back to your data'); renderAll(); }
+    demoOff: () => { S.demoOn = false; toast('Back to your data'); renderAll(); },
+    trkStart: () => trkStart(), trkPause: () => trkPause(), trkStop: () => trkStop(), trkDiscard: () => trkDiscard(),
+    goalAdd: () => openGoalSheet(null), goalEdit: (el) => openGoalSheet(el.dataset.id)
   };
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
@@ -2469,6 +2485,170 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   // refresh "today" when the app comes back to the foreground
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheets.length) { try { syncHistory(false); } catch (e) { /* history sync is best effort */ } renderAll(); } });
 
+
+  // ---------------- stage D: live tracking and goals ----------------
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const clockOf = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); };
+  const hhmm = (min) => { const m = ((min % 1440) + 1440) % 1440; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); };
+  const localDate = (ms) => { const d = new Date(ms); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  const workCat = () => catIdsByRole('work')[0] || 'cat_work';
+  /** Total unpaid (paused) time, from stored timestamps only. */
+  function pausedMs(s, now) {
+    let t = 0;
+    (s.pauses || []).forEach((p) => { t += Math.max(0, p.to - p.from); });
+    if (s.paused && s.pausedAt) t += Math.max(0, now - s.pausedAt);
+    return t;
+  }
+  const paidMsOf = (s, now) => Math.max(0, (now - s.startedAt) - pausedMs(s, now));
+  function cleanGoals(list) {
+    return (Array.isArray(list) ? list : []).filter((g) => g && typeof g.id === 'string' && typeof g.name === 'string' && isFinite(+g.target) && +g.target > 0)
+      .map((g) => ({ id: g.id, name: g.name.slice(0, 40), emoji: String(g.emoji || '').slice(0, 4), target: T.round2(+g.target), saved: Math.max(0, T.round2(+g.saved || 0)), targetDate: /^\d{4}-\d{2}-\d{2}$/.test(g.targetDate || '') ? g.targetDate : '', jobId: typeof g.jobId === 'string' ? g.jobId : '', createdAt: +g.createdAt || Date.now(), updatedAt: +g.updatedAt || Date.now() }));
+  }
+
+  function trackCard() {
+    if (S.demoOn) return '';
+    const s = S.real.tracking, jobs = S.real.jobs;
+    if (!s) {
+      const pick = jobs.length > 1 ? `<div class="field"><label for="trk-job">Job</label><select id="trk-job">${jobs.map((j) => `<option value="${esc(j.id)}">${esc(j.name)} · ${money(j.rate)}/h</option>`).join('')}</select></div>` : '';
+      const note = !jobs.length ? ' Add a job in Settings first. Without a job rate, the estimate is £0.' : (jobs.length === 1 ? ` Uses ${esc(jobs[0].name)} at ${money(jobs[0].rate)}/h.` : '');
+      return `<section class="card track" aria-label="Live earnings">
+        <div class="card-head"><div><div class="eyebrow">Live earnings</div><h2>Start tracking</h2></div></div>
+        ${pick}<p class="muted" style="margin:0">Counts paid time only. Pauses are unpaid. Estimates are before tax.${note}</p>
+        <button class="btn primary block" data-act="trkStart">Start tracking</button></section>`;
+    }
+    const now = Date.now(), j = s.jobId ? job(s.jobId) : null, rate = s.rate || 0;
+    const paidMin = Math.floor(paidMsOf(s, now) / 60000);
+    return `<section class="card track ${s.paused ? 'is-paused' : 'is-live'}" aria-label="Live earnings">
+      <div class="card-head"><div><div class="eyebrow">${s.paused ? 'Paused' : 'Tracking now'}${j ? ' · ' + esc(j.name) : ''}</div><h2>Live earnings</h2></div><span class="sub">Started ${hhmm(clockOf(s.startedAt))}</span></div>
+      <div class="pair"><div><span class="label">Estimated so far</span><span class="big money" data-live="earn">${money(paidMin / 60 * rate)}</span><span class="sub">before tax</span></div>
+        <div><span class="label">Paid time</span><span class="big" data-live="paid">${dur(paidMin)}</span><span class="sub">Pauses are not counted</span></div></div>
+      ${rate > 0 ? '' : '<p class="muted" style="margin:0">This job has no hourly rate, so the estimate is £0.</p>'}
+      <div class="btn-row"><button class="btn" data-act="trkPause">${s.paused ? 'Resume' : 'Pause'}</button><button class="btn primary" data-act="trkStop">Stop and save</button><button class="btn" data-act="trkDiscard">Discard</button></div>
+    </section>`;
+  }
+  /** Updates only the numbers, once a second, from stored timestamps. */
+  function tickLive() {
+    const s = S.real.tracking;
+    if (!s || S.demoOn || S.ui.tab !== 'dashboard') return;
+    const paidMin = Math.floor(paidMsOf(s, Date.now()) / 60000);
+    const e = document.querySelector('[data-live="earn"]'), p = document.querySelector('[data-live="paid"]');
+    if (e) e.textContent = money(paidMin / 60 * (s.rate || 0));
+    if (p) p.textContent = dur(paidMin);
+  }
+  function trkStart() {
+    if (S.demoOn) return toast('Turn off demo data to track your own time');
+    if (S.real.tracking) return toast('Already tracking. Stop or discard it first.');
+    const sel = document.getElementById('trk-job');
+    const j = sel ? job(sel.value) : S.real.jobs[0];
+    apply({ tracking: { id: T.uid('t_'), jobId: j ? j.id : null, rate: j ? T.round2(+j.rate || 0) : 0, startedAt: Date.now(), paused: false, pausedAt: null, pauses: [] } }, 'Tracking started');
+  }
+  function trkPause() {
+    const s = S.real.tracking; if (!s) return;
+    const now = Date.now();
+    const next = s.paused
+      ? Object.assign({}, s, { paused: false, pausedAt: null, pauses: (s.pauses || []).concat([{ from: s.pausedAt, to: now }]) })
+      : Object.assign({}, s, { paused: true, pausedAt: now });
+    apply({ tracking: next }, next.paused ? 'Paused. Paused time is not counted.' : 'Resumed');
+  }
+  function trkStop() {
+    const s = S.real.tracking; if (!s) return;
+    const now = Date.now();
+    const pauses = (s.pauses || []).concat(s.paused ? [{ from: s.pausedAt, to: now }] : []);
+    const elapsedMin = Math.round((now - s.startedAt) / 60000);
+    if (elapsedMin < 1) return toast('Too short to save. Keep tracking or discard it.');
+    if (elapsedMin >= 1440) return toast('Tracking ran for more than a day. Add this shift in Calendar, then discard it here.');
+    const startClock = clockOf(s.startedAt);
+    const spans = pauses.map((p) => ({ from: Math.max(0, Math.round((p.from - s.startedAt) / 60000)), to: Math.min(elapsedMin, Math.round((p.to - s.startedAt) / 60000)) })).filter((b) => b.to > b.from);
+    if (spans.some((b) => startClock + b.from < 1440 && startClock + b.to >= 1440)) return toast('A pause crosses midnight. Save this in Calendar instead.');
+    const breaks = spans.map((b) => ({ start: hhmm(startClock + b.from), end: hhmm(startClock + b.to) }));
+    const breakMin = spans.reduce((t, b) => t + (b.to - b.from), 0);
+    const paidMin = elapsedMin - breakMin;
+    if (paidMin <= 0) return toast('No paid time to save. The pauses cover the whole session.');
+    const rec = { id: T.uid('a_'), mode: 'actual', date: localDate(s.startedAt), start: hhmm(startClock), end: hhmm(startClock + elapsedMin), endsNextDay: startClock + elapsedMin >= 1440, categoryId: workCat(), name: 'Tracked shift', paid: true, jobId: s.jobId || null, rate: s.rate || 0, breaks, segments: [], notes: '', paidOverrideMin: null, seriesId: null, createdAt: now, updatedAt: now, schema: SCHEMA };
+    const errs = T.validateRecord(rec);
+    if (errs.length) return toast(errs[0].msg);
+    const ov = T.findOverlaps(rec, D().activities);
+    if (ov.length) return toast(`This overlaps "${ov[0].name || cat(ov[0].categoryId).name}" on ${niceDate(ov[0].date)}. Fix that in Calendar, then save again.`);
+    apply({ activities: { put: [rec] }, tracking: null }, `Saved ${hrs(paidMin)} of paid time`);
+  }
+  async function trkDiscard() {
+    if (!S.real.tracking) return;
+    const ok = await choose('Discard this session?', '<p>Nothing from it is saved. This cannot be undone.</p>', [{ label: 'Discard', val: true, kind: 'danger' }, { label: 'Keep tracking', val: false }]);
+    if (ok) apply({ tracking: null }, 'Session discarded');
+  }
+
+  // ---- goals ----
+  /** Saved is what you enter. Earnings are never added to it automatically. */
+  function goalCalc(g) {
+    const j = g.jobId ? job(g.jobId) : null;
+    const target = +g.target || 0, saved = +g.saved || 0;
+    const rate = j && +j.rate > 0 ? +j.rate : 0;
+    const left = Math.max(0, target - saved);
+    return { target, saved, left, pct: target > 0 ? Math.min(100, saved / target * 100) : 0, rate, hours: rate > 0 ? left / rate : null, reached: target > 0 && saved >= target };
+  }
+  function goalLine(g) {
+    const c = goalCalc(g);
+    const parts = [`${money(c.target)} target`, `${money(c.saved)} saved`];
+    if (c.reached) parts.push('goal reached');
+    else if (c.hours != null) parts.push(`around ${c.hours.toFixed(1)} paid hours remaining at ${money(c.rate)}/hour, before tax`);
+    else parts.push('set your job rate to estimate the hours left');
+    return parts.join(' · ');
+  }
+  function goalCard(g) {
+    const c = goalCalc(g);
+    return `<section class="card goal" aria-label="${esc(g.name)}">
+      <div class="card-head"><div><div class="eyebrow">${esc(g.emoji || '🎯')} Goal${g.targetDate ? ' · by ' + esc(niceDate(g.targetDate, true)) : ''}</div><h2>${esc(g.name)}</h2></div><button class="btn" data-act="goalEdit" data-id="${esc(g.id)}">Edit</button></div>
+      <div class="bar" role="progressbar" aria-label="${esc(g.name)} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(c.pct)}"><i style="width:${c.pct.toFixed(1)}%"></i></div>
+      <p class="goal-line">${esc(g.name)} · ${esc(goalLine(g))}.</p>
+      <p class="goal-note">Saved is money you have set aside. Tracked earnings are not added to it, and each saved amount counts toward only one goal.</p>
+    </section>`;
+  }
+  function goalStrip() {
+    const g = S.real.goals[0];
+    if (!g) return `<section class="card"><div class="eyebrow">Goal</div><h2>No goal yet</h2><p class="muted" style="margin:0">Add a goal, such as headphones or a holiday, to see your progress here.</p><div class="btn-row"><button class="btn" data-act="tab" data-tab="goals">Go to Goals</button></div></section>`;
+    return goalCard(g);
+  }
+  function openGoalSheet(id) {
+    if (S.demoOn) return toast('Turn off demo data to add goals');
+    const g = id ? S.real.goals.find((x) => x.id === id) : null;
+    if (id && !g) return toast('That goal was not found');
+    const jobs = S.real.jobs;
+    openSheet({ title: g ? 'Edit goal' : 'New goal', render(sh) {
+      sh.body.innerHTML = `<form id="goal-form" novalidate>
+        <div class="field"><label for="g-name">Name</label><input id="g-name" maxlength="40" value="${esc(g ? g.name : '')}" placeholder="Headphones"></div>
+        <div class="field"><label for="g-emoji">Emoji (optional)</label><input id="g-emoji" maxlength="4" value="${esc(g ? g.emoji : '')}" placeholder="🎧"></div>
+        <div class="field"><label for="g-target">Target amount (${esc(curSymbol())})</label><input id="g-target" type="number" inputmode="decimal" step="0.01" min="0.01" value="${g ? esc(g.target) : ''}"></div>
+        <div class="field"><label for="g-saved">Money saved so far (${esc(curSymbol())})</label><input id="g-saved" type="number" inputmode="decimal" step="0.01" min="0" value="${g ? esc(g.saved) : '0'}"><span class="hint">Enter what you have actually put aside. Tracked earnings are not added automatically.</span></div>
+        <div class="field"><label for="g-date">Target date (optional)</label><input id="g-date" type="date" value="${g && g.targetDate ? esc(g.targetDate) : ''}"></div>
+        ${jobs.length ? `<div class="field"><label for="g-job">Job for hour estimates</label><select id="g-job"><option value="">No job</option>${jobs.map((j) => `<option value="${esc(j.id)}" ${g && g.jobId === j.id ? 'selected' : ''}>${esc(j.name)} · ${money(j.rate)}/h</option>`).join('')}</select></div>` : '<p class="hint">Add a job in Settings to estimate the paid hours left.</p>'}
+        <div class="errors" id="g-err" role="alert" hidden></div>
+        <div class="btn-row"><button class="btn primary" type="submit">Save goal</button>${g ? '<button class="btn" type="button" id="g-del">Delete goal</button>' : ''}</div>
+      </form>`;
+      $('#goal-form', sh.body).addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('#g-name', sh.body).value.trim(), emoji = $('#g-emoji', sh.body).value.trim();
+        const target = parseFloat($('#g-target', sh.body).value), saved = parseFloat($('#g-saved', sh.body).value || '0');
+        const date = $('#g-date', sh.body).value, jobId = jobs.length ? $('#g-job', sh.body).value : '';
+        const errs = [];
+        if (!name) errs.push('Give the goal a name.');
+        if (!(target > 0)) errs.push('Enter a target amount above zero.');
+        if (!(saved >= 0)) errs.push('Money saved cannot be negative.');
+        if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) errs.push('Enter a valid target date, or leave it empty.');
+        if (errs.length) { const el = $('#g-err', sh.body); el.hidden = false; el.innerHTML = errs.map((x) => `<div>${esc(x)}</div>`).join(''); return; }
+        const rec = { id: g ? g.id : T.uid('g_'), name, emoji, target: T.round2(target), saved: T.round2(saved), targetDate: date || '', jobId: jobId || '', createdAt: g ? g.createdAt : Date.now(), updatedAt: Date.now() };
+        const list = g ? S.real.goals.map((x) => (x.id === g.id ? rec : x)) : S.real.goals.concat([rec]);
+        closeSheet(sh);
+        apply({ goals: list }, 'Goal saved');
+      });
+      const del = $('#g-del', sh.body);
+      if (del) del.addEventListener('click', async () => {
+        const ok = await choose('Delete this goal?', `<p>${esc(g.name)} will be removed. Money you saved is not affected.</p>`, [{ label: 'Delete goal', val: true, kind: 'danger' }, { label: 'Keep it', val: false }]);
+        if (!ok) return;
+        closeSheet(sh);
+        apply({ goals: S.real.goals.filter((x) => x.id !== g.id) }, 'Goal deleted');
+      });
+    } });
+  }
   // ---------------- boot ----------------
   /** Before the data is changed by a newer version, keep one untouched copy of it. Repeat-safe: an existing copy is never overwritten. */
   async function upgradeSchema(data) {
@@ -2496,6 +2676,8 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
       if (Array.isArray(data.categories) && data.categories.length) S.real.categories = data.categories;
       if (Array.isArray(data.activities)) S.real.activities = data.activities;
       if (data.payments && data.payments.records && typeof data.payments.records === 'object') S.real.payments = { id: 'payments', records: data.payments.records };
+      if (Array.isArray(data.goals)) S.real.goals = cleanGoals(data.goals);
+      if (data.tracking && typeof data.tracking === 'object' && typeof data.tracking.startedAt === 'number') S.real.tracking = data.tracking;
       await upgradeSchema(data);
       S.needsSync = true;
       if (!(Array.isArray(data.categories) && data.categories.length) && Store.kind !== 'memory') Store.commit({ categories: { put: S.real.categories }, settings: S.real.settings }).catch(() => {});
@@ -2504,6 +2686,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
     if (S.needsSync && Store.kind !== 'memory') { S.needsSync = false; try { syncHistory(true); } catch (e) { console.error(e); } }
   }
   window.__TE_APP = { S, Store, apply, buildCSV, backupJSON, syncHistory };
+  setInterval(tickLive, 1000);
   boot();
 })();
 
